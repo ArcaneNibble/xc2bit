@@ -2,8 +2,12 @@
 
 use core::fmt;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Coolrunner-II devices
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum XC2Device {
     XC2C32,
     XC2C32A,
@@ -46,6 +50,7 @@ impl TryFrom<&str> for XC2Device {
 
 /// All possible speed grades
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpeedGrade {
     _4,
     _5,
@@ -80,6 +85,7 @@ impl TryFrom<&str> for SpeedGrade {
 
 /// All possible physical packages, not including Pb-free-ness
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum PhysicalPackageShape {
     QF32,
     PC44,
@@ -101,6 +107,7 @@ impl fmt::Display for PhysicalPackageShape {
 
 /// All possible physical packages
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PhysicalPackage {
     pub shape: PhysicalPackageShape,
     pub pbfree: bool,
@@ -178,6 +185,7 @@ impl TryFrom<&str> for PhysicalPackage {
 
 /// One specific part, i.e. device type, speed grade, and package all in one struct
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct XC2Part {
     pub device: XC2Device,
     pub speed: Option<SpeedGrade>,
