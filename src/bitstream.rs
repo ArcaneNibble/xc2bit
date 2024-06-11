@@ -1,3 +1,5 @@
+//! Top-level bitstream functions
+
 use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
 use bitvec::prelude::*;
 

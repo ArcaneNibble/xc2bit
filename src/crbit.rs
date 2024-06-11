@@ -1,6 +1,7 @@
 //! Contains routines for dealing with xc2bit's "native" crbit format.
 //!
 //! This format is a "raw" dump of bits in the order that they'd be shifted into JTAG.
+//! (Ancient comments claim that this format is intended to be compatible with `$readmemb`, but TODO VERIFY)
 //! TODO: Document this format formally.
 
 extern crate std;
@@ -162,8 +163,6 @@ impl CrbitReader for Coolrunner2<BitBox> {
 }
 
 pub trait CrbitWriter {
-    /// Writes the fuse array to the internal "crbit" file format, which is an ASCII file containing '1' and '0'.
-    /// (Ancient comments claim that this format is intended to be compatible with `$readmemb`, but TODO VERIFY)
     fn write_crbit<W: io::Write>(&self, w: W) -> io::Result<()>;
 }
 impl<B: BitHolder> CrbitWriter for Coolrunner2<B> {
