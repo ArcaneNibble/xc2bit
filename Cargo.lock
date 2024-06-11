@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "bittwiddler-core"
+version = "0.1.0"
+
+[[package]]
 name = "xc2bit"
 version = "0.1.0"
+dependencies = [
+ "bittwiddler-core",
+]

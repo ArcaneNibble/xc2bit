@@ -3,4 +3,9 @@ name = "xc2bit"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["alloc"]
+alloc = ["bittwiddler-core/alloc"]
+
 [dependencies]
+bittwiddler-core = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-core", default-features = false }
