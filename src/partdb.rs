@@ -1,6 +1,11 @@
 //! Database of valid part/package/speed combinations
 
-use core::fmt;
+use core::fmt::{self, Debug, Display};
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "alloc")]
+use core::fmt::Write;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -44,6 +49,19 @@ impl TryFrom<&str> for XC2Device {
             Ok(Self::XC2C512)
         } else {
             Err(())
+        }
+    }
+}
+impl XC2Device {
+    /// Dimensions (W, H) of the physical fusemap
+    pub fn fuse_array_dims(self) -> (usize, usize) {
+        match self {
+            Self::XC2C32 | Self::XC2C32A => (260, 50),
+            Self::XC2C64 | Self::XC2C64A => (274, 98),
+            Self::XC2C128 => (752, 82),
+            Self::XC2C256 => (1364, 98),
+            Self::XC2C384 => (1868, 122),
+            Self::XC2C512 => (1980, 162),
         }
     }
 }
@@ -179,6 +197,23 @@ impl TryFrom<&str> for PhysicalPackage {
             })
         } else {
             Err(())
+        }
+    }
+}
+impl Display for PhysicalPackage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.shape {
+            PhysicalPackageShape::QF32 => write!(f, "QF{}32", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::PC44 => write!(f, "PC{}44", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::VQ44 => write!(f, "VQ{}44", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::QF48 => write!(f, "QF{}48", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::CP56 => write!(f, "CP{}56", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::VQ100 => write!(f, "VQ{}100", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::CP132 => write!(f, "CP{}132", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::TQ144 => write!(f, "TQ{}144", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::PQ208 => write!(f, "PQ{}208", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::FT256 => write!(f, "FT{}256", if self.pbfree { "G" } else { "" }),
+            PhysicalPackageShape::FG324 => write!(f, "FG{}324", if self.pbfree { "G" } else { "" }),
         }
     }
 }
@@ -322,10 +357,36 @@ impl TryFrom<&str> for XC2Part {
         }
 
         let device = dev_str.try_into()?;
-        let speed = Some(spd_str.try_into()?);
-        let package = Some(pkg_str.try_into()?);
+        let speed = if spd_str.eq_ignore_ascii_case("unknown") {
+            None
+        } else {
+            Some(spd_str.try_into()?)
+        };
+        let package = if pkg_str.eq_ignore_ascii_case("unknown") {
+            None
+        } else {
+            Some(pkg_str.try_into()?)
+        };
 
         Self::new(device, speed, package).ok_or(())
+    }
+}
+#[cfg(feature = "alloc")]
+impl alloc::string::ToString for XC2Part {
+    fn to_string(&self) -> alloc::string::String {
+        let mut str = alloc::string::String::new();
+        write!(&mut str, "{}-", self.device).unwrap();
+        if let Some(spd) = self.speed {
+            write!(&mut str, "{}-", spd).unwrap();
+        } else {
+            write!(&mut str, "UNKNOWN-").unwrap();
+        }
+        if let Some(pkg) = self.package {
+            write!(&mut str, "{}", pkg).unwrap();
+        } else {
+            write!(&mut str, "UNKNOWN").unwrap();
+        }
+        str
     }
 }
 
@@ -357,6 +418,17 @@ mod tests {
                 })
             })
         );
+        assert_eq!(
+            XC2Part::try_from("XC2C32A-UNKNOWN-vqg44"),
+            Ok(XC2Part {
+                device: XC2Device::XC2C32A,
+                speed: None,
+                package: Some(PhysicalPackage {
+                    shape: PhysicalPackageShape::VQ44,
+                    pbfree: true
+                })
+            })
+        );
     }
 
     #[test]
@@ -369,5 +441,38 @@ mod tests {
     fn malformed_part_names() {
         assert_eq!(XC2Part::try_from("asdf"), Err(()));
         assert_eq!(XC2Part::try_from("xc2c32a-5-vq44-asdf"), Err(()));
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn part_stringifying() {
+        use alloc::string::ToString;
+
+        assert_eq!(
+            XC2Part::new(
+                XC2Device::XC2C32A,
+                Some(SpeedGrade::_4),
+                Some(PhysicalPackage {
+                    shape: PhysicalPackageShape::VQ44,
+                    pbfree: true
+                })
+            )
+            .unwrap()
+            .to_string(),
+            "XC2C32A-4-VQG44"
+        );
+        assert_eq!(
+            XC2Part::new(
+                XC2Device::XC2C32A,
+                None,
+                Some(PhysicalPackage {
+                    shape: PhysicalPackageShape::VQ44,
+                    pbfree: true
+                })
+            )
+            .unwrap()
+            .to_string(),
+            "XC2C32A-UNKNOWN-VQG44"
+        );
     }
 }

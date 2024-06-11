@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["alloc", "serde"]
-alloc = ["bittwiddler-core/alloc", "serde?/alloc"]
+default = ["std", "serde"]
+std = ["alloc", "bitvec/std", "serde?/std"]
+alloc = ["bittwiddler-core/alloc", "bitvec/alloc", "serde?/alloc"]
 serde = ["dep:serde", "serde/derive"]
 
 [dependencies]
 bittwiddler-core = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-core", default-features = false }
+bitvec = { version = "1.0", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
