@@ -1,7 +1,7 @@
-use bittwiddler_core::prelude::Coordinate;
+use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
 use bitvec::prelude::*;
 
-use crate::partdb::XC2Part;
+use crate::{global_fuses::GlobalFuses, partdb::XC2Part};
 
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
@@ -35,20 +35,23 @@ pub struct Coolrunner2<B: BitHolder> {
 impl Coolrunner2<BitBox> {
     pub fn new(part: XC2Part) -> Self {
         let fuse_dims = part.device.fuse_array_dims();
-        let mut bits = bitbox![0; fuse_dims.0 * fuse_dims.1];
+        let bits = bitbox![0; fuse_dims.0 * fuse_dims.1];
+
+        let mut ret = Self { part, bits };
 
         // Initialize security/done/usercode rows to all 1s
         for x in 0..fuse_dims.0 {
-            bits.set((fuse_dims.1 - 1) * fuse_dims.0 + x, true);
-            bits.set((fuse_dims.1 - 2) * fuse_dims.0 + x, true);
+            ret.set(Coordinate::new(x, fuse_dims.1 - 1), true);
+            ret.set(Coordinate::new(x, fuse_dims.1 - 2), true);
         }
 
-        // TODO VERY IMPORTANT done1
+        // done1
+        ret.set(part.device.done1(), false);
 
-        Self { part, bits }
+        ret
     }
 }
-impl<B: BitHolder> bittwiddler_core::prelude::BitArray for Coolrunner2<B> {
+impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {
     fn get(&self, c: Coordinate) -> bool {
         let (fuse_dims_w, _) = self.part.device.fuse_array_dims();
         BitHolder::get(&self.bits, c.y * fuse_dims_w + c.x)
@@ -70,7 +73,7 @@ mod tests {
         let mut bitstream = Coolrunner2::new(XC2Part::new(XC2Device::XC2C32A, None, None).unwrap());
 
         assert_eq!(bitstream.bits.len(), 260 * 50);
-        bittwiddler_core::prelude::BitArray::set(&mut bitstream, Coordinate::new(1, 1), true);
+        BittwiddlerBitArray::set(&mut bitstream, Coordinate::new(1, 1), true);
         assert!(bitstream.bits[261]);
     }
 }
