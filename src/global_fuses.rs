@@ -22,6 +22,11 @@ pub trait GlobalFuses {
     fn global_term(&self) -> Coordinate;
     fn io_input_voltage(&self) -> &'static [Coordinate];
     fn io_output_voltage(&self) -> &'static [Coordinate];
+    fn vref_enable(&self) -> Coordinate;
+    fn clk_div_enable(&self) -> Coordinate;
+    fn clk_div_ratio(&self) -> [Coordinate; 3];
+    fn clk_div_delay(&self) -> Coordinate;
+    fn data_gate(&self) -> Coordinate;
 }
 impl GlobalFuses for XC2Device {
     fn done1(&self) -> Coordinate {
@@ -197,7 +202,10 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(139, 23), Coordinate::new(141, 23)];
                 X
             }
-            XC2Device::XC2C128 => todo!(),
+            XC2Device::XC2C128 => {
+                const X: &[Coordinate] = &[Coordinate::new(8, 67), Coordinate::new(368, 67)];
+                X
+            }
             XC2Device::XC2C256 => todo!(),
             XC2Device::XC2C384 => todo!(),
             XC2Device::XC2C512 => todo!(),
@@ -216,10 +224,89 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(140, 23), Coordinate::new(142, 23)];
                 X
             }
-            XC2Device::XC2C128 => todo!(),
+            XC2Device::XC2C128 => {
+                const X: &[Coordinate] = &[Coordinate::new(9, 67), Coordinate::new(369, 67)];
+                X
+            }
             XC2Device::XC2C256 => todo!(),
             XC2Device::XC2C384 => todo!(),
             XC2Device::XC2C512 => todo!(),
+        }
+    }
+
+    fn vref_enable(&self) -> Coordinate {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                unreachable!()
+            }
+            XC2Device::XC2C128 => Coordinate::new(10, 67),
+            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C384 => todo!(),
+            XC2Device::XC2C512 => todo!(),
+        }
+    }
+
+    fn clk_div_enable(&self) -> Coordinate {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                unreachable!()
+            }
+            XC2Device::XC2C128 => Coordinate::new(364, 67),
+            XC2Device::XC2C256 => Coordinate::new(519, 24),
+            XC2Device::XC2C384 => Coordinate::new(471, 107),
+            XC2Device::XC2C512 => Coordinate::new(978, 147),
+        }
+    }
+
+    fn clk_div_ratio(&self) -> [Coordinate; 3] {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                unreachable!()
+            }
+            XC2Device::XC2C128 => [
+                Coordinate::new(363, 67),
+                Coordinate::new(362, 67),
+                Coordinate::new(361, 67),
+            ],
+            XC2Device::XC2C256 => [
+                Coordinate::new(518, 24),
+                Coordinate::new(517, 24),
+                Coordinate::new(516, 24),
+            ],
+            XC2Device::XC2C384 => [
+                Coordinate::new(470, 107),
+                Coordinate::new(469, 107),
+                Coordinate::new(468, 107),
+            ],
+            XC2Device::XC2C512 => [
+                Coordinate::new(977, 147),
+                Coordinate::new(976, 147),
+                Coordinate::new(975, 147),
+            ],
+        }
+    }
+
+    fn clk_div_delay(&self) -> Coordinate {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                unreachable!()
+            }
+            XC2Device::XC2C128 => Coordinate::new(360, 67),
+            XC2Device::XC2C256 => Coordinate::new(515, 24),
+            XC2Device::XC2C384 => Coordinate::new(467, 107),
+            XC2Device::XC2C512 => Coordinate::new(974, 147),
+        }
+    }
+
+    fn data_gate(&self) -> Coordinate {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                unreachable!()
+            }
+            XC2Device::XC2C128 => Coordinate::new(371, 67),
+            XC2Device::XC2C256 => Coordinate::new(518, 23),
+            XC2Device::XC2C384 => Coordinate::new(932, 17),
+            XC2Device::XC2C512 => Coordinate::new(982, 147),
         }
     }
 }

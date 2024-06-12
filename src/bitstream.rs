@@ -3,7 +3,10 @@
 use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
 use bitvec::prelude::*;
 
-use crate::{global_fuses::GlobalFuses, partdb::XC2Part};
+use crate::{
+    global_fuses::GlobalFuses,
+    partdb::{XC2Device, XC2Part},
+};
 
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
@@ -61,6 +64,26 @@ impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {
     fn set(&mut self, c: Coordinate, val: bool) {
         let (fuse_dims_w, _) = self.part.device.fuse_array_dims();
         BitHolder::set(&mut self.bits, c.y * fuse_dims_w + c.x, val)
+    }
+}
+
+pub trait BuriedMacrocells {
+    fn has_io_at(&self, fb: u8, mc: u8) -> bool;
+}
+impl BuriedMacrocells for XC2Device {
+    fn has_io_at(&self, fb: u8, mc: u8) -> bool {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => true,
+            XC2Device::XC2C64 | XC2Device::XC2C64A => true,
+            XC2Device::XC2C128 => match fb {
+                0 | 1 | 5 | 7 => !(6..10).contains(&mc),
+                2 | 3 | 4 | 6 => !(7..10).contains(&mc),
+                _ => unreachable!(),
+            },
+            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C384 => todo!(),
+            XC2Device::XC2C512 => todo!(),
+        }
     }
 }
 
