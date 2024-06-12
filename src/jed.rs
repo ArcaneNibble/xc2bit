@@ -1,8 +1,19 @@
 //! Xilinx ISE JEDEC programming file compatibility
 
-use bittwiddler_core::prelude::Coordinate;
+#[cfg(feature = "std")]
+extern crate std;
 
-use crate::{bitstream::BuriedMacrocells, global_fuses::*, partdb::XC2Device};
+use core::fmt::Display;
+
+use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
+use bitvec::prelude::*;
+use jedec::*;
+
+use crate::{
+    bitstream::{BitHolder, Coolrunner2},
+    global_fuses::*,
+    partdb::{XC2Device, XC2Part},
+};
 
 const XC2C64_MACROCELL_PERMUTE: [Coordinate; 27] = [
     // row 0
@@ -78,30 +89,17 @@ const XC2C256_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
     Coordinate::new(8, 0),
     Coordinate::new(6, 0),
     Coordinate::new(5, 0),
-    // Coordinate::new(4, 0),
     Coordinate::new(2, 0),
     Coordinate::new(3, 0),
-    // Coordinate::new(0, 0),
-    // Coordinate::new(1, 0),
     // row 2
-    // Coordinate::new(9, 1),
-    // Coordinate::new(7, 1),
-    // Coordinate::new(8, 1),
-    // Coordinate::new(3, 1),
-    // Coordinate::new(4, 1),
-    // Coordinate::new(5, 1),
-    // Coordinate::new(6, 1),
     Coordinate::new(1, 1),
     Coordinate::new(2, 1),
     Coordinate::new(0, 1),
     // row 3
-    // Coordinate::new(8, 2),
     Coordinate::new(6, 2),
     Coordinate::new(7, 2),
     Coordinate::new(4, 2),
     Coordinate::new(5, 2),
-    // Coordinate::new(3, 2),
-    // Coordinate::new(2, 2),
     Coordinate::new(0, 2),
     Coordinate::new(1, 2),
 ];
@@ -206,6 +204,9 @@ fn get_fat_mc_idx(device: XC2Device, fb: usize, offs: usize) -> (usize, usize) {
 
 pub trait JedecCompat {
     fn num_jed_fuses(&self) -> usize;
+    fn guess_device_from_fuses(fuse_count: usize) -> Option<Self>
+    where
+        Self: Sized;
     fn jed_index_to_crbit(&self, jed_idx: usize) -> Coordinate;
 
     fn _is_zia(&self, jed_idx: usize) -> Option<(usize, usize)>;
@@ -224,6 +225,20 @@ impl JedecCompat for XC2Device {
             XC2Device::XC2C256 => 123249,
             XC2Device::XC2C384 => 209357,
             XC2Device::XC2C512 => 296403,
+        }
+    }
+
+    fn guess_device_from_fuses(fuse_count: usize) -> Option<Self> {
+        match fuse_count {
+            12274 => Some(XC2Device::XC2C32),
+            12278 => Some(XC2Device::XC2C32A),
+            25808 => Some(XC2Device::XC2C64),
+            25812 => Some(XC2Device::XC2C64A),
+            55341 => Some(XC2Device::XC2C128),
+            123249 => Some(XC2Device::XC2C256),
+            209357 => Some(XC2Device::XC2C384),
+            296403 => Some(XC2Device::XC2C512),
+            _ => None,
         }
     }
 
@@ -915,202 +930,202 @@ impl JedecCompat for XC2Device {
     fn _is_zia(&self, jed_idx: usize) -> Option<(usize, usize)> {
         match self {
             XC2Device::XC2C32 | XC2Device::XC2C32A => {
-                if (0..8 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (6128..6128 + 8 * 40).contains(&jed_idx) {
+                } else if (6128..6128 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 6128))
                 } else {
                     None
                 }
             }
             XC2Device::XC2C64 | XC2Device::XC2C64A => {
-                if (0..16 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (6448..6448 + 16 * 40).contains(&jed_idx) {
+                } else if (6448..6448 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 6448))
-                } else if (12896..12896 + 16 * 40).contains(&jed_idx) {
+                } else if (12896..12896 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((2, jed_idx - 12896))
-                } else if (19344..19344 + 16 * 40).contains(&jed_idx) {
+                } else if (19344..19344 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((3, jed_idx - 19344))
                 } else {
                     None
                 }
             }
             XC2Device::XC2C128 => {
-                if (0..28 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (6908..6908 + 28 * 40).contains(&jed_idx) {
+                } else if (6908..6908 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 6908))
-                } else if (13816..13816 + 28 * 40).contains(&jed_idx) {
+                } else if (13816..13816 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((2, jed_idx - 13816))
-                } else if (20737..20737 + 28 * 40).contains(&jed_idx) {
+                } else if (20737..20737 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((3, jed_idx - 20737))
-                } else if (27658..27658 + 28 * 40).contains(&jed_idx) {
+                } else if (27658..27658 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((4, jed_idx - 27658))
-                } else if (34579..34579 + 28 * 40).contains(&jed_idx) {
+                } else if (34579..34579 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((5, jed_idx - 34579))
-                } else if (41487..41487 + 28 * 40).contains(&jed_idx) {
+                } else if (41487..41487 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((6, jed_idx - 41487))
-                } else if (48408..48408 + 28 * 40).contains(&jed_idx) {
+                } else if (48408..48408 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((7, jed_idx - 48408))
                 } else {
                     None
                 }
             }
             XC2Device::XC2C256 => {
-                if (0..48 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (7695..7695 + 48 * 40).contains(&jed_idx) {
+                } else if (7695..7695 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 7695))
-                } else if (15390..15390 + 48 * 40).contains(&jed_idx) {
+                } else if (15390..15390 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((2, jed_idx - 15390))
-                } else if (23085..23085 + 48 * 40).contains(&jed_idx) {
+                } else if (23085..23085 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((3, jed_idx - 23085))
-                } else if (30780..30780 + 48 * 40).contains(&jed_idx) {
+                } else if (30780..30780 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((4, jed_idx - 30780))
-                } else if (38475..38475 + 48 * 40).contains(&jed_idx) {
+                } else if (38475..38475 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((5, jed_idx - 38475))
-                } else if (46170..46170 + 48 * 40).contains(&jed_idx) {
+                } else if (46170..46170 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((6, jed_idx - 46170))
-                } else if (53878..53878 + 48 * 40).contains(&jed_idx) {
+                } else if (53878..53878 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((7, jed_idx - 53878))
-                } else if (61586..61586 + 48 * 40).contains(&jed_idx) {
+                } else if (61586..61586 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((8, jed_idx - 61586))
-                } else if (69294..69294 + 48 * 40).contains(&jed_idx) {
+                } else if (69294..69294 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((9, jed_idx - 69294))
-                } else if (77002..77002 + 48 * 40).contains(&jed_idx) {
+                } else if (77002..77002 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((10, jed_idx - 77002))
-                } else if (84710..84710 + 48 * 40).contains(&jed_idx) {
+                } else if (84710..84710 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((11, jed_idx - 84710))
-                } else if (92418..92418 + 48 * 40).contains(&jed_idx) {
+                } else if (92418..92418 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((12, jed_idx - 92418))
-                } else if (100113..100113 + 48 * 40).contains(&jed_idx) {
+                } else if (100113..100113 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((13, jed_idx - 100113))
-                } else if (107808..107808 + 48 * 40).contains(&jed_idx) {
+                } else if (107808..107808 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((14, jed_idx - 107808))
-                } else if (115516..115516 + 48 * 40).contains(&jed_idx) {
+                } else if (115516..115516 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((15, jed_idx - 115516))
                 } else {
                     None
                 }
             }
             XC2Device::XC2C384 => {
-                if (0..74 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (8722..8722 + 74 * 40).contains(&jed_idx) {
+                } else if (8722..8722 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 8722))
-                } else if (17444..17444 + 74 * 40).contains(&jed_idx) {
+                } else if (17444..17444 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((2, jed_idx - 17444))
-                } else if (26166..26166 + 74 * 40).contains(&jed_idx) {
+                } else if (26166..26166 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((3, jed_idx - 26166))
-                } else if (34888..34888 + 74 * 40).contains(&jed_idx) {
+                } else if (34888..34888 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((4, jed_idx - 34888))
-                } else if (43610..43610 + 74 * 40).contains(&jed_idx) {
+                } else if (43610..43610 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((5, jed_idx - 43610))
-                } else if (52332..52332 + 74 * 40).contains(&jed_idx) {
+                } else if (52332..52332 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((6, jed_idx - 52332))
-                } else if (61054..61054 + 74 * 40).contains(&jed_idx) {
+                } else if (61054..61054 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((7, jed_idx - 61054))
-                } else if (69776..69776 + 74 * 40).contains(&jed_idx) {
+                } else if (69776..69776 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((8, jed_idx - 69776))
-                } else if (78498..78498 + 74 * 40).contains(&jed_idx) {
+                } else if (78498..78498 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((9, jed_idx - 78498))
-                } else if (87220..87220 + 74 * 40).contains(&jed_idx) {
+                } else if (87220..87220 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((10, jed_idx - 87220))
-                } else if (95942..95942 + 74 * 40).contains(&jed_idx) {
+                } else if (95942..95942 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((11, jed_idx - 95942))
-                } else if (104664..104664 + 74 * 40).contains(&jed_idx) {
+                } else if (104664..104664 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((12, jed_idx - 104664))
-                } else if (113386..113386 + 74 * 40).contains(&jed_idx) {
+                } else if (113386..113386 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((13, jed_idx - 113386))
-                } else if (122108..122108 + 74 * 40).contains(&jed_idx) {
+                } else if (122108..122108 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((14, jed_idx - 122108))
-                } else if (130830..130830 + 74 * 40).contains(&jed_idx) {
+                } else if (130830..130830 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((15, jed_idx - 130830))
-                } else if (139552..139552 + 74 * 40).contains(&jed_idx) {
+                } else if (139552..139552 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((16, jed_idx - 139552))
-                } else if (148274..148274 + 74 * 40).contains(&jed_idx) {
+                } else if (148274..148274 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((17, jed_idx - 148274))
-                } else if (156996..156996 + 74 * 40).contains(&jed_idx) {
+                } else if (156996..156996 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((18, jed_idx - 156996))
-                } else if (165718..165718 + 74 * 40).contains(&jed_idx) {
+                } else if (165718..165718 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((19, jed_idx - 165718))
-                } else if (174440..174440 + 74 * 40).contains(&jed_idx) {
+                } else if (174440..174440 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((20, jed_idx - 174440))
-                } else if (183162..183162 + 74 * 40).contains(&jed_idx) {
+                } else if (183162..183162 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((21, jed_idx - 183162))
-                } else if (191884..191884 + 74 * 40).contains(&jed_idx) {
+                } else if (191884..191884 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((22, jed_idx - 191884))
-                } else if (200606..200606 + 74 * 40).contains(&jed_idx) {
+                } else if (200606..200606 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((23, jed_idx - 200606))
                 } else {
                     None
                 }
             }
             XC2Device::XC2C512 => {
-                if (0..88 * 40).contains(&jed_idx) {
+                if (0..self.zia_width() * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
-                } else if (9256..9256 + 88 * 40).contains(&jed_idx) {
+                } else if (9256..9256 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((1, jed_idx - 9256))
-                } else if (18512..18512 + 88 * 40).contains(&jed_idx) {
+                } else if (18512..18512 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((2, jed_idx - 18512))
-                } else if (27781..27781 + 88 * 40).contains(&jed_idx) {
+                } else if (27781..27781 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((3, jed_idx - 27781))
-                } else if (37037..37037 + 88 * 40).contains(&jed_idx) {
+                } else if (37037..37037 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((4, jed_idx - 37037))
-                } else if (46306..46306 + 88 * 40).contains(&jed_idx) {
+                } else if (46306..46306 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((5, jed_idx - 46306))
-                } else if (55562..55562 + 88 * 40).contains(&jed_idx) {
+                } else if (55562..55562 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((6, jed_idx - 55562))
-                } else if (64831..64831 + 88 * 40).contains(&jed_idx) {
+                } else if (64831..64831 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((7, jed_idx - 64831))
-                } else if (74087..74087 + 88 * 40).contains(&jed_idx) {
+                } else if (74087..74087 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((8, jed_idx - 74087))
-                } else if (83343..83343 + 88 * 40).contains(&jed_idx) {
+                } else if (83343..83343 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((9, jed_idx - 83343))
-                } else if (92599..92599 + 88 * 40).contains(&jed_idx) {
+                } else if (92599..92599 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((10, jed_idx - 92599))
-                } else if (101855..101855 + 88 * 40).contains(&jed_idx) {
+                } else if (101855..101855 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((11, jed_idx - 101855))
-                } else if (111124..111124 + 88 * 40).contains(&jed_idx) {
+                } else if (111124..111124 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((12, jed_idx - 111124))
-                } else if (120380..120380 + 88 * 40).contains(&jed_idx) {
+                } else if (120380..120380 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((13, jed_idx - 120380))
-                } else if (129649..129649 + 88 * 40).contains(&jed_idx) {
+                } else if (129649..129649 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((14, jed_idx - 129649))
-                } else if (138905..138905 + 88 * 40).contains(&jed_idx) {
+                } else if (138905..138905 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((15, jed_idx - 138905))
-                } else if (148174..148174 + 88 * 40).contains(&jed_idx) {
+                } else if (148174..148174 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((16, jed_idx - 148174))
-                } else if (157443..157443 + 88 * 40).contains(&jed_idx) {
+                } else if (157443..157443 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((17, jed_idx - 157443))
-                } else if (166699..166699 + 88 * 40).contains(&jed_idx) {
+                } else if (166699..166699 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((18, jed_idx - 166699))
-                } else if (175968..175968 + 88 * 40).contains(&jed_idx) {
+                } else if (175968..175968 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((19, jed_idx - 175968))
-                } else if (185224..185224 + 88 * 40).contains(&jed_idx) {
+                } else if (185224..185224 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((20, jed_idx - 185224))
-                } else if (194493..194493 + 88 * 40).contains(&jed_idx) {
+                } else if (194493..194493 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((21, jed_idx - 194493))
-                } else if (203749..203749 + 88 * 40).contains(&jed_idx) {
+                } else if (203749..203749 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((22, jed_idx - 203749))
-                } else if (213018..213018 + 88 * 40).contains(&jed_idx) {
+                } else if (213018..213018 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((23, jed_idx - 213018))
-                } else if (222274..222274 + 88 * 40).contains(&jed_idx) {
+                } else if (222274..222274 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((24, jed_idx - 222274))
-                } else if (231530..231530 + 88 * 40).contains(&jed_idx) {
+                } else if (231530..231530 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((25, jed_idx - 231530))
-                } else if (240799..240799 + 88 * 40).contains(&jed_idx) {
+                } else if (240799..240799 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((26, jed_idx - 240799))
-                } else if (250055..250055 + 88 * 40).contains(&jed_idx) {
+                } else if (250055..250055 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((27, jed_idx - 250055))
-                } else if (259324..259324 + 88 * 40).contains(&jed_idx) {
+                } else if (259324..259324 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((28, jed_idx - 259324))
-                } else if (268580..268580 + 88 * 40).contains(&jed_idx) {
+                } else if (268580..268580 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((29, jed_idx - 268580))
-                } else if (277849..277849 + 88 * 40).contains(&jed_idx) {
+                } else if (277849..277849 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((30, jed_idx - 277849))
-                } else if (287105..287105 + 88 * 40).contains(&jed_idx) {
+                } else if (287105..287105 + self.zia_width() * 40).contains(&jed_idx) {
                     Some((31, jed_idx - 287105))
                 } else {
                     None
@@ -1738,6 +1753,174 @@ impl JedecCompat for XC2Device {
                 }
             }
         }
+    }
+}
+
+#[cfg(feature = "std")]
+#[derive(Debug)]
+pub enum JedReadError {
+    IoError(std::io::Error),
+    ParseError(JedParserError),
+    UnknownPart,
+}
+#[cfg(feature = "std")]
+impl Display for JedReadError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            JedReadError::IoError(e) => e.fmt(f),
+            JedReadError::ParseError(e) => e.fmt(f),
+            JedReadError::UnknownPart => write!(f, "unknown part, wrong fuse count"),
+        }
+    }
+}
+#[cfg(feature = "std")]
+impl std::error::Error for JedReadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            JedReadError::IoError(e) => Some(e),
+            JedReadError::ParseError(e) => Some(e),
+            JedReadError::UnknownPart => None,
+        }
+    }
+}
+#[cfg(feature = "std")]
+impl From<std::io::Error> for JedReadError {
+    fn from(value: std::io::Error) -> Self {
+        Self::IoError(value)
+    }
+}
+#[cfg(feature = "std")]
+impl From<JedParserError> for JedReadError {
+    fn from(value: JedParserError) -> Self {
+        Self::ParseError(value)
+    }
+}
+
+#[cfg(feature = "std")]
+pub trait JedReader {
+    fn read_jed<R: std::io::Read>(r: R) -> Result<Self, JedReadError>
+    where
+        Self: Sized;
+}
+#[cfg(feature = "std")]
+impl JedReader for Coolrunner2<BitBox> {
+    fn read_jed<R: std::io::Read>(mut r: R) -> Result<Self, JedReadError>
+    where
+        Self: Sized,
+    {
+        let mut inp_bytes = std::vec::Vec::new();
+        r.read_to_end(&mut inp_bytes)?;
+        let jed_file = JEDECFile::read_into_vecs(&inp_bytes, &Quirks::new().no_design_spec(true))?;
+
+        let mut part: Result<XC2Part, ()> = Err(());
+        for note in jed_file.notes {
+            if let Ok(note) = core::str::from_utf8(note) {
+                let note = note.trim();
+                if let Some(dev_str) = note.strip_prefix("DEVICE ") {
+                    part = dev_str.try_into();
+                }
+            }
+        }
+
+        let part = match part {
+            Ok(part) => part,
+            Err(_) => {
+                // Guess part from fuse count
+                XC2Part::new(
+                    XC2Device::guess_device_from_fuses(jed_file.f.len())
+                        .ok_or(JedReadError::UnknownPart)?,
+                    None,
+                    None,
+                )
+                .unwrap()
+            }
+        };
+
+        let mut bitstream = Coolrunner2::new(part);
+
+        for fuse_idx in 0..part.device.num_jed_fuses() {
+            let phys_fuse = part.device.jed_index_to_crbit(fuse_idx);
+            BittwiddlerBitArray::set(&mut bitstream, phys_fuse, jed_file.f[fuse_idx]);
+        }
+
+        Ok(bitstream)
+    }
+}
+
+#[cfg(feature = "std")]
+pub trait JedWriter {
+    fn write_jed<W: std::io::Write>(&self, w: W) -> std::io::Result<()>;
+}
+#[cfg(feature = "std")]
+impl<B: BitHolder> JedWriter for Coolrunner2<B> {
+    fn write_jed<W: std::io::Write>(&self, w: W) -> std::io::Result<()> {
+        let mut jed_fuses = bitbox![0; self.part.device.num_jed_fuses()];
+
+        for fuse_idx in 0..self.part.device.num_jed_fuses() {
+            let phys_fuse = self.part.device.jed_index_to_crbit(fuse_idx);
+            jed_fuses.set(fuse_idx, BittwiddlerBitArray::get(self, phys_fuse));
+        }
+
+        let mut linebreaks = std::vec::Vec::new();
+        let mut fuse_idx = 0;
+        for fb in 0..self.part.device.num_fbs() {
+            for _zia_row in 0..40 {
+                if fuse_idx != 0 {
+                    linebreaks.push(fuse_idx);
+                }
+                fuse_idx += self.part.device.zia_width();
+            }
+            linebreaks.push(fuse_idx);
+
+            for _and_row in 0..56 {
+                linebreaks.push(fuse_idx);
+                fuse_idx += 80;
+            }
+            linebreaks.push(fuse_idx);
+
+            for _or_row in 0..56 {
+                linebreaks.push(fuse_idx);
+                fuse_idx += 16;
+            }
+            linebreaks.push(fuse_idx);
+
+            for mc in 0..16 {
+                linebreaks.push(fuse_idx);
+                fuse_idx += match self.part.device {
+                    XC2Device::XC2C32
+                    | XC2Device::XC2C32A
+                    | XC2Device::XC2C64
+                    | XC2Device::XC2C64A => 27,
+                    XC2Device::XC2C128
+                    | XC2Device::XC2C256
+                    | XC2Device::XC2C384
+                    | XC2Device::XC2C512 => {
+                        if self.part.device.has_io_at(fb as u8, mc) {
+                            29
+                        } else {
+                            16
+                        }
+                    }
+                }
+            }
+            linebreaks.push(fuse_idx);
+        }
+        linebreaks.push(fuse_idx);
+
+        let jed = JEDECFile {
+            f: jed_fuses,
+            header: b"crbit native bitstream file written by xc2bit\nhttps://github.com/ArcaneNibble/xc2bit\n\n" as &[u8],
+            footer: b"" as &[u8],
+            design_spec: b"" as &[u8],
+            notes: &[],
+            secure_fuse: None,
+        };
+
+        jed.write_io_custom_linebreaks(
+            w,
+            &Quirks::new().no_design_spec(true),
+            linebreaks.into_iter(),
+        )
     }
 }
 

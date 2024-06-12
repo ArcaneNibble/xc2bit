@@ -5,11 +5,17 @@ edition = "2021"
 
 [features]
 default = ["std", "serde"]
-std = ["alloc", "bitvec/std", "serde?/std"]
-alloc = ["bittwiddler-core/alloc", "bitvec/alloc", "serde?/alloc"]
+std = ["alloc", "bitvec/std", "jedec/std", "serde?/std"]
+alloc = [
+    "bittwiddler-core/alloc",
+    "bitvec/alloc",
+    "jedec/alloc",
+    "serde?/alloc",
+]
 serde = ["dep:serde", "serde/derive"]
 
 [dependencies]
 bittwiddler-core = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-core", default-features = false }
 bitvec = { version = "1.0", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
+jedec = { path = "../rust-jedec", default-features = false }

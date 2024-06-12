@@ -54,7 +54,7 @@ impl TryFrom<&str> for XC2Device {
 }
 impl XC2Device {
     /// Dimensions (W, H) of the physical fusemap
-    pub fn fuse_array_dims(self) -> (usize, usize) {
+    pub const fn fuse_array_dims(self) -> (usize, usize) {
         match self {
             Self::XC2C32 | Self::XC2C32A => (260, 50),
             Self::XC2C64 | Self::XC2C64A => (274, 98),
@@ -62,6 +62,54 @@ impl XC2Device {
             Self::XC2C256 => (1364, 98),
             Self::XC2C384 => (1868, 122),
             Self::XC2C512 => (1980, 162),
+        }
+    }
+
+    pub fn has_io_at(&self, fb: u8, mc: u8) -> bool {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => true,
+            XC2Device::XC2C64 | XC2Device::XC2C64A => true,
+            XC2Device::XC2C128 => match fb {
+                0 | 1 | 5 | 7 => !(6..10).contains(&mc),
+                2 | 3 | 4 | 6 => !(7..10).contains(&mc),
+                _ => unreachable!(),
+            },
+            XC2Device::XC2C256 => match fb {
+                0 | 1 | 2 | 3 | 4 | 5 | 12 | 13 => !(6..11).contains(&mc),
+                6 | 7 | 8 | 9 | 10 | 11 | 14 | 15 => !(6..10).contains(&mc),
+                _ => unreachable!(),
+            },
+            XC2Device::XC2C384 => !(5..11).contains(&mc),
+            XC2Device::XC2C512 => match fb {
+                0 | 1 | 3 | 5 | 7 | 8 | 9 | 10 | 12 | 14 | 17 | 19 | 21 | 23 | 24 | 26 | 28
+                | 30 => !(4..12).contains(&mc),
+                2 | 4 | 6 | 11 | 13 | 15 | 16 | 18 | 20 | 22 | 25 | 27 | 29 | 31 => {
+                    !(5..12).contains(&mc)
+                }
+                _ => unreachable!(),
+            },
+        }
+    }
+
+    pub const fn num_fbs(self) -> usize {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => 2,
+            XC2Device::XC2C64 | XC2Device::XC2C64A => 4,
+            XC2Device::XC2C128 => 8,
+            XC2Device::XC2C256 => 16,
+            XC2Device::XC2C384 => 24,
+            XC2Device::XC2C512 => 32,
+        }
+    }
+
+    pub const fn zia_width(self) -> usize {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => 8,
+            XC2Device::XC2C64 | XC2Device::XC2C64A => 16,
+            XC2Device::XC2C128 => 28,
+            XC2Device::XC2C256 => 48,
+            XC2Device::XC2C384 => 74,
+            XC2Device::XC2C512 => 88,
         }
     }
 }
