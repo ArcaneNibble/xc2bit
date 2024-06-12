@@ -11,6 +11,7 @@ use crate::{
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
     fn set(&mut self, idx: usize, val: bool);
+    fn wipe(&mut self);
 }
 impl BitHolder for &mut BitArray {
     fn get(&self, idx: usize) -> bool {
@@ -18,6 +19,9 @@ impl BitHolder for &mut BitArray {
     }
     fn set(&mut self, idx: usize, val: bool) {
         BitSlice::set(self, idx, val)
+    }
+    fn wipe(&mut self) {
+        self.fill(false);
     }
 }
 #[cfg(feature = "alloc")]
@@ -27,6 +31,9 @@ impl BitHolder for BitBox {
     }
     fn set(&mut self, idx: usize, val: bool) {
         BitSlice::set(self, idx, val)
+    }
+    fn wipe(&mut self) {
+        self.fill(false);
     }
 }
 
@@ -43,17 +50,28 @@ impl Coolrunner2<BitBox> {
         let bits = bitbox![0; fuse_dims.0 * fuse_dims.1];
 
         let mut ret = Self { part, bits };
+        ret.make_blank(false);
+
+        ret
+    }
+}
+#[allow(private_bounds)]
+impl<B: BitHolder> Coolrunner2<B> {
+    pub fn make_blank(&mut self, full_wipe: bool) {
+        if full_wipe {
+            self.bits.wipe();
+        }
+
+        let fuse_dims = self.part.device.fuse_array_dims();
 
         // Initialize security/done/usercode rows to all 1s
         for x in 0..fuse_dims.0 {
-            ret.set(Coordinate::new(x, fuse_dims.1 - 1), true);
-            ret.set(Coordinate::new(x, fuse_dims.1 - 2), true);
+            self.set(Coordinate::new(x, fuse_dims.1 - 1), true);
+            self.set(Coordinate::new(x, fuse_dims.1 - 2), true);
         }
 
         // done1
-        ret.set(part.device.done1(), false);
-
-        ret
+        self.set(self.part.device.done1(), false);
     }
 }
 impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {
@@ -80,7 +98,11 @@ impl BuriedMacrocells for XC2Device {
                 2 | 3 | 4 | 6 => !(7..10).contains(&mc),
                 _ => unreachable!(),
             },
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => match fb {
+                0 | 1 | 2 | 3 | 4 | 5 | 12 | 13 => !(6..11).contains(&mc),
+                6 | 7 | 8 | 9 | 10 | 11 | 14 | 15 => !(6..10).contains(&mc),
+                _ => unreachable!(),
+            },
             XC2Device::XC2C384 => !(5..11).contains(&mc),
             XC2Device::XC2C512 => match fb {
                 0 | 1 | 3 | 5 | 7 | 8 | 9 | 10 | 12 | 14 | 17 | 19 | 21 | 23 | 24 | 26 | 28

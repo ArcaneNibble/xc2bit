@@ -206,7 +206,10 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(8, 67), Coordinate::new(368, 67)];
                 X
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                const X: &[Coordinate] = &[Coordinate::new(175, 23), Coordinate::new(515, 23)];
+                X
+            }
             XC2Device::XC2C384 => {
                 const X: &[Coordinate] = &[
                     Coordinate::new(936, 17),
@@ -244,7 +247,10 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(9, 67), Coordinate::new(369, 67)];
                 X
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                const X: &[Coordinate] = &[Coordinate::new(176, 23), Coordinate::new(516, 23)];
+                X
+            }
             XC2Device::XC2C384 => {
                 const X: &[Coordinate] = &[
                     Coordinate::new(937, 17),

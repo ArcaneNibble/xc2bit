@@ -37,6 +37,75 @@ const XC2C64_MACROCELL_PERMUTE: [Coordinate; 27] = [
     Coordinate::new(0, 2),
 ];
 
+const XC2C256_MC_WITH_IO_PERMUTE: [Coordinate; 29] = [
+    // row 1
+    Coordinate::new(9, 0),
+    Coordinate::new(7, 0),
+    Coordinate::new(8, 0),
+    Coordinate::new(6, 0),
+    Coordinate::new(5, 0),
+    Coordinate::new(4, 0),
+    Coordinate::new(2, 0),
+    Coordinate::new(3, 0),
+    Coordinate::new(0, 0),
+    Coordinate::new(1, 0),
+    // row 2
+    Coordinate::new(9, 1),
+    Coordinate::new(7, 1),
+    Coordinate::new(8, 1),
+    Coordinate::new(3, 1),
+    Coordinate::new(4, 1),
+    Coordinate::new(5, 1),
+    Coordinate::new(6, 1),
+    Coordinate::new(1, 1),
+    Coordinate::new(2, 1),
+    Coordinate::new(0, 1),
+    // row 3
+    Coordinate::new(8, 2),
+    Coordinate::new(6, 2),
+    Coordinate::new(7, 2),
+    Coordinate::new(4, 2),
+    Coordinate::new(5, 2),
+    Coordinate::new(3, 2),
+    Coordinate::new(2, 2),
+    Coordinate::new(0, 2),
+    Coordinate::new(1, 2),
+];
+const XC2C256_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
+    // row 1
+    Coordinate::new(9, 0),
+    Coordinate::new(7, 0),
+    Coordinate::new(8, 0),
+    Coordinate::new(6, 0),
+    Coordinate::new(5, 0),
+    // Coordinate::new(4, 0),
+    Coordinate::new(2, 0),
+    Coordinate::new(3, 0),
+    // Coordinate::new(0, 0),
+    // Coordinate::new(1, 0),
+    // row 2
+    // Coordinate::new(9, 1),
+    // Coordinate::new(7, 1),
+    // Coordinate::new(8, 1),
+    // Coordinate::new(3, 1),
+    // Coordinate::new(4, 1),
+    // Coordinate::new(5, 1),
+    // Coordinate::new(6, 1),
+    Coordinate::new(1, 1),
+    Coordinate::new(2, 1),
+    Coordinate::new(0, 1),
+    // row 3
+    // Coordinate::new(8, 2),
+    Coordinate::new(6, 2),
+    Coordinate::new(7, 2),
+    Coordinate::new(4, 2),
+    Coordinate::new(5, 2),
+    // Coordinate::new(3, 2),
+    // Coordinate::new(2, 2),
+    Coordinate::new(0, 2),
+    Coordinate::new(1, 2),
+];
+
 const BIG_MC_WITH_IO_PERMUTE: [Coordinate; 29] = [
     // row 1 (mostly)
     Coordinate::new(8, 0),
@@ -77,29 +146,16 @@ const BIG_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
     Coordinate::new(10, 0),
     Coordinate::new(11, 0),
     Coordinate::new(12, 0),
-    // Coordinate::new(4, 0),
     Coordinate::new(2, 0),
     Coordinate::new(3, 0),
-    // Coordinate::new(5, 0),
-    // Coordinate::new(6, 0),
-    // Coordinate::new(13, 0),
-    // Coordinate::new(0, 0),
-    // Coordinate::new(1, 0),
     // row 2 (mostly)
-    // Coordinate::new(2, 1),
-    // Coordinate::new(3, 1),
-    // Coordinate::new(4, 1),
-    // Coordinate::new(5, 1),
     Coordinate::new(13, 1),
     Coordinate::new(14, 1),
     Coordinate::new(14, 0),
-    // Coordinate::new(8, 1),
     Coordinate::new(9, 1),
     Coordinate::new(10, 1),
     Coordinate::new(11, 1),
     Coordinate::new(12, 1),
-    // Coordinate::new(6, 1),
-    // Coordinate::new(7, 0),
     Coordinate::new(0, 1),
     Coordinate::new(1, 1),
 ];
@@ -112,22 +168,6 @@ const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
 ];
 #[rustfmt::skip]
 const NOGAP_AND_TERM_PERMUTE: [usize; 56] = [
-    // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    // 55, 54, 53,
-    // 11, 12, 13,
-    // 52, 51, 50,
-    // 14, 15, 16,
-    // 49, 48, 47,
-    // 17, 18, 19,
-    // 46, 45, 44,
-    // 20, 21, 22,
-    // 43, 42, 41,
-    // 23, 24, 25,
-    // 40, 39, 38,
-    // 26, 27, 28,
-    // 37, 36, 35,
-    // 29, 30, 31,
-    // 34, 33, 32
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     14, 15, 16,
     20, 21, 22,
@@ -446,7 +486,141 @@ impl JedecCompat for XC2Device {
                     unreachable!()
                 }
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                if let Some((fb, offs)) = self._is_zia(jed_idx) {
+                    let zia_row = offs / 48;
+                    let zia_offs = offs % 48;
+
+                    let x_base = (47 - zia_offs) * 2 + fb % 2;
+                    let y = zia_row
+                        + if zia_row >= 20 { 8 } else { 0 }
+                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
+                            48
+                        } else {
+                            0
+                        };
+                    let x = match fb {
+                        0..=3 => 123 + x_base,
+                        4..=7 => 463 + x_base,
+                        8..=11 => 805 + x_base,
+                        12..=15 => 1145 + x_base,
+                        _ => unreachable!(),
+                    };
+
+                    Coordinate::new(x, y)
+                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
+                    let group_80 = offs / 80;
+                    let offs_80 = offs % 80;
+
+                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
+                    let y = offs_80 / 2
+                        + if offs_80 >= 40 { 8 } else { 0 }
+                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
+                            48
+                        } else {
+                            0
+                        };
+                    let x = match fb {
+                        0 | 2 => 11 + x_base,
+                        1 | 3 => 330 - x_base,
+                        4 | 6 => 351 + x_base,
+                        5 | 7 => 670 - x_base,
+                        8 | 10 => 693 + x_base,
+                        9 | 11 => 1012 - x_base,
+                        12 | 14 => 1033 + x_base,
+                        13 | 15 => 1352 - x_base,
+                        _ => unreachable!(),
+                    };
+
+                    Coordinate::new(x, y)
+                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
+                    let group_16 = offs / 16;
+                    let offs_16 = offs % 16;
+
+                    let x_base = offs_16 % 2 + group_16 * 2;
+                    let y = 20
+                        + offs_16 / 2
+                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
+                            48
+                        } else {
+                            0
+                        };
+                    let x = match fb {
+                        0 | 2 => 11 + x_base,
+                        1 | 3 => 330 - x_base,
+                        4 | 6 => 351 + x_base,
+                        5 | 7 => 670 - x_base,
+                        8 | 10 => 693 + x_base,
+                        9 | 11 => 1012 - x_base,
+                        12 | 14 => 1033 + x_base,
+                        13 | 15 => 1352 - x_base,
+                        _ => unreachable!(),
+                    };
+
+                    Coordinate::new(x, y)
+                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
+                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
+                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
+                        XC2C256_MC_WITH_IO_PERMUTE[mc_offs]
+                    } else {
+                        XC2C256_MC_NO_IO_PERMUTE[mc_offs]
+                    };
+                    let y = mc * 3
+                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
+                            48
+                        } else {
+                            0
+                        }
+                        + permute_c.y;
+                    let x = match fb {
+                        0 | 2 => 1 + permute_c.x,
+                        1 | 3 => 340 - permute_c.x,
+                        4 | 6 => 341 + permute_c.x,
+                        5 | 7 => 680 - permute_c.x,
+                        8 | 10 => 683 + permute_c.x,
+                        9 | 11 => 1022 - permute_c.x,
+                        12 | 14 => 1023 + permute_c.x,
+                        13 | 15 => 1362 - permute_c.x,
+                        _ => unreachable!(),
+                    };
+
+                    Coordinate::new(x, y)
+                } else if (123224..123227).contains(&jed_idx) {
+                    self.gck()[jed_idx - 123224]
+                } else if jed_idx == 123227 {
+                    self.clk_div_enable()
+                } else if (123228..123231).contains(&jed_idx) {
+                    self.clk_div_ratio()[jed_idx - 123228]
+                } else if jed_idx == 123231 {
+                    self.clk_div_delay()
+                } else if (123232..123234).contains(&jed_idx) {
+                    if jed_idx == 123232 {
+                        self.gsr_invert()
+                    } else {
+                        self.gsr_enable()
+                    }
+                } else if (123234..123242).contains(&jed_idx) {
+                    let offs = jed_idx - 123234;
+                    let gts_idx = offs / 2;
+                    if offs % 2 == 0 {
+                        self.gts_invert()[gts_idx]
+                    } else {
+                        self.gts_enable()[gts_idx]
+                    }
+                } else if jed_idx == 123242 {
+                    self.global_term()
+                } else if jed_idx == 123243 {
+                    self.data_gate()
+                } else if (123244..123246).contains(&jed_idx) {
+                    self.io_input_voltage()[jed_idx - 123244]
+                } else if (123246..123248).contains(&jed_idx) {
+                    self.io_output_voltage()[jed_idx - 123246]
+                } else if jed_idx == 123248 {
+                    self.vref_enable()
+                } else {
+                    unreachable!()
+                }
+            }
             XC2Device::XC2C384 => {
                 if let Some((fb, offs)) = self._is_zia(jed_idx) {
                     let zia_row = offs / 74;
@@ -783,7 +957,43 @@ impl JedecCompat for XC2Device {
                     None
                 }
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                if (0..48 * 40).contains(&jed_idx) {
+                    Some((0, jed_idx))
+                } else if (7695..7695 + 48 * 40).contains(&jed_idx) {
+                    Some((1, jed_idx - 7695))
+                } else if (15390..15390 + 48 * 40).contains(&jed_idx) {
+                    Some((2, jed_idx - 15390))
+                } else if (23085..23085 + 48 * 40).contains(&jed_idx) {
+                    Some((3, jed_idx - 23085))
+                } else if (30780..30780 + 48 * 40).contains(&jed_idx) {
+                    Some((4, jed_idx - 30780))
+                } else if (38475..38475 + 48 * 40).contains(&jed_idx) {
+                    Some((5, jed_idx - 38475))
+                } else if (46170..46170 + 48 * 40).contains(&jed_idx) {
+                    Some((6, jed_idx - 46170))
+                } else if (53878..53878 + 48 * 40).contains(&jed_idx) {
+                    Some((7, jed_idx - 53878))
+                } else if (61586..61586 + 48 * 40).contains(&jed_idx) {
+                    Some((8, jed_idx - 61586))
+                } else if (69294..69294 + 48 * 40).contains(&jed_idx) {
+                    Some((9, jed_idx - 69294))
+                } else if (77002..77002 + 48 * 40).contains(&jed_idx) {
+                    Some((10, jed_idx - 77002))
+                } else if (84710..84710 + 48 * 40).contains(&jed_idx) {
+                    Some((11, jed_idx - 84710))
+                } else if (92418..92418 + 48 * 40).contains(&jed_idx) {
+                    Some((12, jed_idx - 92418))
+                } else if (100113..100113 + 48 * 40).contains(&jed_idx) {
+                    Some((13, jed_idx - 100113))
+                } else if (107808..107808 + 48 * 40).contains(&jed_idx) {
+                    Some((14, jed_idx - 107808))
+                } else if (115516..115516 + 48 * 40).contains(&jed_idx) {
+                    Some((15, jed_idx - 115516))
+                } else {
+                    None
+                }
+            }
             XC2Device::XC2C384 => {
                 if (0..74 * 40).contains(&jed_idx) {
                     Some((0, jed_idx))
@@ -954,7 +1164,43 @@ impl JedecCompat for XC2Device {
                     None
                 }
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                if (1920..1920 + 56 * 80).contains(&jed_idx) {
+                    Some((0, jed_idx - 1920))
+                } else if (9615..9615 + 56 * 80).contains(&jed_idx) {
+                    Some((1, jed_idx - 9615))
+                } else if (17310..17310 + 56 * 80).contains(&jed_idx) {
+                    Some((2, jed_idx - 17310))
+                } else if (25005..25005 + 56 * 80).contains(&jed_idx) {
+                    Some((3, jed_idx - 25005))
+                } else if (32700..32700 + 56 * 80).contains(&jed_idx) {
+                    Some((4, jed_idx - 32700))
+                } else if (40395..40395 + 56 * 80).contains(&jed_idx) {
+                    Some((5, jed_idx - 40395))
+                } else if (48090..48090 + 56 * 80).contains(&jed_idx) {
+                    Some((6, jed_idx - 48090))
+                } else if (55798..55798 + 56 * 80).contains(&jed_idx) {
+                    Some((7, jed_idx - 55798))
+                } else if (63506..63506 + 56 * 80).contains(&jed_idx) {
+                    Some((8, jed_idx - 63506))
+                } else if (71214..71214 + 56 * 80).contains(&jed_idx) {
+                    Some((9, jed_idx - 71214))
+                } else if (78922..78922 + 56 * 80).contains(&jed_idx) {
+                    Some((10, jed_idx - 78922))
+                } else if (86630..86630 + 56 * 80).contains(&jed_idx) {
+                    Some((11, jed_idx - 86630))
+                } else if (94338..94338 + 56 * 80).contains(&jed_idx) {
+                    Some((12, jed_idx - 94338))
+                } else if (102033..102033 + 56 * 80).contains(&jed_idx) {
+                    Some((13, jed_idx - 102033))
+                } else if (109728..109728 + 56 * 80).contains(&jed_idx) {
+                    Some((14, jed_idx - 109728))
+                } else if (117436..117436 + 56 * 80).contains(&jed_idx) {
+                    Some((15, jed_idx - 117436))
+                } else {
+                    None
+                }
+            }
             XC2Device::XC2C384 => {
                 if (2960..2960 + 56 * 80).contains(&jed_idx) {
                     Some((0, jed_idx - 2960))
@@ -1125,7 +1371,43 @@ impl JedecCompat for XC2Device {
                     None
                 }
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                if (6400..6400 + 16 * 56).contains(&jed_idx) {
+                    Some((0, jed_idx - 6400))
+                } else if (14095..14095 + 16 * 56).contains(&jed_idx) {
+                    Some((1, jed_idx - 14095))
+                } else if (21790..21790 + 16 * 56).contains(&jed_idx) {
+                    Some((2, jed_idx - 21790))
+                } else if (29485..29485 + 16 * 56).contains(&jed_idx) {
+                    Some((3, jed_idx - 29485))
+                } else if (37180..37180 + 16 * 56).contains(&jed_idx) {
+                    Some((4, jed_idx - 37180))
+                } else if (44875..44875 + 16 * 56).contains(&jed_idx) {
+                    Some((5, jed_idx - 44875))
+                } else if (52570..52570 + 16 * 56).contains(&jed_idx) {
+                    Some((6, jed_idx - 52570))
+                } else if (60278..60278 + 16 * 56).contains(&jed_idx) {
+                    Some((7, jed_idx - 60278))
+                } else if (67986..67986 + 16 * 56).contains(&jed_idx) {
+                    Some((8, jed_idx - 67986))
+                } else if (75694..75694 + 16 * 56).contains(&jed_idx) {
+                    Some((9, jed_idx - 75694))
+                } else if (83402..83402 + 16 * 56).contains(&jed_idx) {
+                    Some((10, jed_idx - 83402))
+                } else if (91110..91110 + 16 * 56).contains(&jed_idx) {
+                    Some((11, jed_idx - 91110))
+                } else if (98818..98818 + 16 * 56).contains(&jed_idx) {
+                    Some((12, jed_idx - 98818))
+                } else if (106513..106513 + 16 * 56).contains(&jed_idx) {
+                    Some((13, jed_idx - 106513))
+                } else if (114208..114208 + 16 * 56).contains(&jed_idx) {
+                    Some((14, jed_idx - 114208))
+                } else if (121916..121916 + 16 * 56).contains(&jed_idx) {
+                    Some((15, jed_idx - 121916))
+                } else {
+                    None
+                }
+            }
             XC2Device::XC2C384 => {
                 if (7440..7440 + 16 * 56).contains(&jed_idx) {
                     Some((0, jed_idx - 7440))
@@ -1296,7 +1578,43 @@ impl JedecCompat for XC2Device {
                     None
                 }
             }
-            XC2Device::XC2C256 => todo!(),
+            XC2Device::XC2C256 => {
+                if (7296..14991).contains(&jed_idx) {
+                    Some((0, jed_idx - 7296))
+                } else if (14991..22686).contains(&jed_idx) {
+                    Some((1, jed_idx - 14991))
+                } else if (22686..30381).contains(&jed_idx) {
+                    Some((2, jed_idx - 22686))
+                } else if (30381..38076).contains(&jed_idx) {
+                    Some((3, jed_idx - 30381))
+                } else if (38076..45771).contains(&jed_idx) {
+                    Some((4, jed_idx - 38076))
+                } else if (45771..53466).contains(&jed_idx) {
+                    Some((5, jed_idx - 45771))
+                } else if (53466..61174).contains(&jed_idx) {
+                    Some((6, jed_idx - 53466))
+                } else if (61174..68882).contains(&jed_idx) {
+                    Some((7, jed_idx - 61174))
+                } else if (68882..76590).contains(&jed_idx) {
+                    Some((8, jed_idx - 68882))
+                } else if (76590..84298).contains(&jed_idx) {
+                    Some((9, jed_idx - 76590))
+                } else if (84298..92006).contains(&jed_idx) {
+                    Some((10, jed_idx - 84298))
+                } else if (92006..99714).contains(&jed_idx) {
+                    Some((11, jed_idx - 92006))
+                } else if (99714..107409).contains(&jed_idx) {
+                    Some((12, jed_idx - 99714))
+                } else if (107409..115104).contains(&jed_idx) {
+                    Some((13, jed_idx - 107409))
+                } else if (115104..122812).contains(&jed_idx) {
+                    Some((14, jed_idx - 115104))
+                } else if (122812..123224).contains(&jed_idx) {
+                    Some((15, jed_idx - 122812))
+                } else {
+                    None
+                }
+            }
             XC2Device::XC2C384 => {
                 if (8336..17058).contains(&jed_idx) {
                     Some((0, jed_idx - 8336))
@@ -1510,6 +1828,13 @@ mod tests {
         let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         p.push("tests/xc2c128.map");
         check_map(XC2Device::XC2C128, p);
+    }
+
+    #[test]
+    fn check_jed_xc2c256() {
+        let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        p.push("tests/xc2c256.map");
+        check_map(XC2Device::XC2C256, p);
     }
 
     #[test]
