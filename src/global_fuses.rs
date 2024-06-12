@@ -216,7 +216,15 @@ impl GlobalFuses for XC2Device {
                 ];
                 X
             }
-            XC2Device::XC2C512 => todo!(),
+            XC2Device::XC2C512 => {
+                const X: &[Coordinate] = &[
+                    Coordinate::new(992, 147),
+                    Coordinate::new(1965, 147),
+                    Coordinate::new(3, 147),
+                    Coordinate::new(985, 147),
+                ];
+                X
+            }
         }
     }
 
@@ -246,7 +254,15 @@ impl GlobalFuses for XC2Device {
                 ];
                 X
             }
-            XC2Device::XC2C512 => todo!(),
+            XC2Device::XC2C512 => {
+                const X: &[Coordinate] = &[
+                    Coordinate::new(991, 147),
+                    Coordinate::new(1964, 147),
+                    Coordinate::new(2, 147),
+                    Coordinate::new(984, 147),
+                ];
+                X
+            }
         }
     }
 

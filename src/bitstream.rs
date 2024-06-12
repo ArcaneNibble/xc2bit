@@ -82,7 +82,14 @@ impl BuriedMacrocells for XC2Device {
             },
             XC2Device::XC2C256 => todo!(),
             XC2Device::XC2C384 => !(5..11).contains(&mc),
-            XC2Device::XC2C512 => todo!(),
+            XC2Device::XC2C512 => match fb {
+                0 | 1 | 3 | 5 | 7 | 8 | 9 | 10 | 12 | 14 | 17 | 19 | 21 | 23 | 24 | 26 | 28
+                | 30 => !(4..12).contains(&mc),
+                2 | 4 | 6 | 11 | 13 | 15 | 16 | 18 | 20 | 22 | 25 | 27 | 29 | 31 => {
+                    !(5..12).contains(&mc)
+                }
+                _ => unreachable!(),
+            },
         }
     }
 }
