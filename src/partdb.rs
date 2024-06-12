@@ -7,6 +7,7 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use core::fmt::Write;
 
+use bittwiddler_core::prelude::Coordinate;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -110,6 +111,104 @@ impl XC2Device {
             XC2Device::XC2C256 => 48,
             XC2Device::XC2C384 => 74,
             XC2Device::XC2C512 => 88,
+        }
+    }
+
+    pub const fn fb_corner(self, fb: u8) -> Coordinate {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => match fb {
+                0 => Coordinate::new(1, 0),
+                1 => Coordinate::new(258, 0),
+                _ => unreachable!(),
+            },
+            XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                let x = match fb {
+                    0 | 2 => 0,
+                    1 | 3 => 273,
+                    _ => unreachable!(),
+                };
+                let y = match fb {
+                    0 | 1 => 0,
+                    2 | 3 => 48,
+                    _ => unreachable!(),
+                };
+                Coordinate::new(x, y)
+            }
+            XC2Device::XC2C128 => {
+                let x = match fb {
+                    0 | 2 => 1,
+                    1 | 3 => 374,
+                    4 | 6 => 377,
+                    5 | 7 => 750,
+                    _ => unreachable!(),
+                };
+                let y = match fb {
+                    0 | 1 | 4 | 5 => 0,
+                    2 | 3 | 6 | 7 => 40,
+                    _ => unreachable!(),
+                };
+                Coordinate::new(x, y)
+            }
+            XC2Device::XC2C256 => {
+                let x = match fb {
+                    0 | 2 => 1,
+                    1 | 3 => 340,
+                    4 | 6 => 341,
+                    5 | 7 => 680,
+                    8 | 10 => 683,
+                    9 | 11 => 1022,
+                    12 | 14 => 1023,
+                    13 | 15 => 1362,
+                    _ => unreachable!(),
+                };
+                let y = match fb {
+                    0 | 1 | 4 | 5 | 8 | 9 | 12 | 13 => 0,
+                    2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 => 48,
+                    _ => unreachable!(),
+                };
+                Coordinate::new(x, y)
+            }
+            XC2Device::XC2C384 => {
+                let x = match fb {
+                    0 | 2 | 4 => 1,
+                    1 | 3 | 5 => 466,
+                    6 | 8 | 10 => 467,
+                    7 | 9 | 11 => 932,
+                    12 | 14 | 16 => 935,
+                    13 | 15 | 17 => 1400,
+                    18 | 20 | 22 => 1401,
+                    19 | 21 | 23 => 1866,
+                    _ => unreachable!(),
+                };
+                let y = match fb {
+                    0 | 1 | 6 | 7 | 12 | 13 | 18 | 19 => 0,
+                    2 | 3 | 8 | 9 | 14 | 15 | 20 | 21 => 40,
+                    4 | 5 | 10 | 11 | 16 | 17 | 22 | 23 => 80,
+                    _ => unreachable!(),
+                };
+                Coordinate::new(x, y)
+            }
+            XC2Device::XC2C512 => {
+                let x = match fb {
+                    0 | 2 | 4 | 6 => 1,
+                    1 | 3 | 5 | 7 => 494,
+                    8 | 10 | 12 | 14 => 495,
+                    9 | 11 | 13 | 15 => 988,
+                    16 | 18 | 20 | 22 => 991,
+                    17 | 19 | 21 | 23 => 1484,
+                    24 | 26 | 28 | 30 => 1485,
+                    25 | 27 | 29 | 31 => 1978,
+                    _ => unreachable!(),
+                };
+                let y = match fb {
+                    0 | 1 | 8 | 9 | 16 | 17 | 24 | 25 => 0,
+                    2 | 3 | 10 | 11 | 18 | 19 | 26 | 27 => 40,
+                    4 | 5 | 12 | 13 | 20 | 21 | 28 | 29 => 80,
+                    6 | 7 | 14 | 15 | 22 | 23 | 30 | 31 => 120,
+                    _ => unreachable!(),
+                };
+                Coordinate::new(x, y)
+            }
         }
     }
 }

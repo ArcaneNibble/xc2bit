@@ -246,447 +246,88 @@ impl JedecCompat for XC2Device {
     }
 
     fn jed_index_to_crbit(&self, jed_idx: usize) -> Coordinate {
-        match self {
-            XC2Device::XC2C32 | XC2Device::XC2C32A => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 8;
-                    let zia_offs = offs % 8;
-
-                    let x = 122 + (7 - zia_offs) * 2 + fb;
-                    let y = zia_row + if zia_row >= 20 { 8 } else { 0 };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
-                    let y = offs_80 / 2 + if offs_80 >= 40 { 8 } else { 0 };
-                    let x = if fb == 0 { 10 + x_base } else { 249 - x_base };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let x_base = offs_16 % 2 + group_16 * 2;
-                    let y = 20 + offs_16 / 2;
-                    let x = if fb == 0 { 10 + x_base } else { 249 - x_base };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
-                    let x_bit = offs % 9;
-                    let y_bit = offs / 9;
-                    if fb == 0 {
-                        Coordinate::new(1 + x_bit, y_bit)
+        if let Some((fb, offs)) = self._is_mc(jed_idx) {
+            match self {
+                XC2Device::XC2C32 | XC2Device::XC2C32A => {
+                    let x = offs % 9;
+                    let y = offs / 9;
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8) + Coordinate::new(x, y)
                     } else {
-                        Coordinate::new(258 - x_bit, y_bit)
+                        self.fb_corner(fb as u8).sub_x_add_y(Coordinate::new(x, y))
                     }
-                } else if (12256..12259).contains(&jed_idx) {
-                    self.gck()[jed_idx - 12256]
-                } else if (12259..12261).contains(&jed_idx) {
-                    if jed_idx == 12259 {
-                        self.gsr_invert()
-                    } else {
-                        self.gsr_enable()
-                    }
-                } else if (12261..12269).contains(&jed_idx) {
-                    let offs = jed_idx - 12261;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
-                    } else {
-                        self.gts_enable()[gts_idx]
-                    }
-                } else if jed_idx == 12269 {
-                    self.global_term()
-                } else if jed_idx == 12270 {
-                    XC2C32_OVOLTAGE
-                } else if jed_idx == 12271 {
-                    XC2C32_IVOLTAGE
-                } else if jed_idx == 12272 {
-                    XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER
-                } else if jed_idx == 12273 {
-                    XC2C32_EXTRA_IBUF_TERMINATION
-                } else if *self == XC2Device::XC2C32A && jed_idx == 12274 {
-                    self.io_input_voltage()[0]
-                } else if *self == XC2Device::XC2C32A && jed_idx == 12275 {
-                    self.io_output_voltage()[0]
-                } else if *self == XC2Device::XC2C32A && jed_idx == 12276 {
-                    self.io_input_voltage()[1]
-                } else if *self == XC2Device::XC2C32A && jed_idx == 12277 {
-                    self.io_output_voltage()[1]
-                } else {
-                    unreachable!()
                 }
-            }
-            XC2Device::XC2C64 | XC2Device::XC2C64A => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 16;
-                    let zia_offs = offs % 16;
-
-                    let x = 121 + (15 - zia_offs) * 2 + fb % 2;
-                    let y = zia_row + if zia_row >= 20 { 8 } else { 0 } + (fb / 2) * 48;
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
-                    let y = offs_80 / 2 + if offs_80 >= 40 { 8 } else { 0 } + (fb / 2) * 48;
-                    let x = if fb % 2 == 0 {
-                        9 + x_base
-                    } else {
-                        264 - x_base
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let x_base = offs_16 % 2 + group_16 * 2;
-                    let y = 20 + offs_16 / 2 + (fb / 2) * 48;
-                    let x = if fb % 2 == 0 {
-                        9 + x_base
-                    } else {
-                        264 - x_base
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
+                XC2Device::XC2C64 | XC2Device::XC2C64A => {
                     let mc = offs / 27;
                     let mc_offs = offs % 27;
                     let permute_c = XC2C64_MACROCELL_PERMUTE[mc_offs];
 
                     if fb % 2 == 0 {
-                        Coordinate::new(0, mc * 3 + (fb / 2) * 48) + permute_c
+                        self.fb_corner(fb as u8) + Coordinate::new(0, mc * 3) + permute_c
                     } else {
-                        Coordinate::new(273 - permute_c.x, mc * 3 + (fb / 2) * 48 + permute_c.y)
+                        self.fb_corner(fb as u8)
+                            .sub_x_add_y(Coordinate::new(0, mc * 3) + permute_c)
                     }
-                } else if (25792..25795).contains(&jed_idx) {
-                    self.gck()[jed_idx - 25792]
-                } else if (25795..25797).contains(&jed_idx) {
-                    if jed_idx == 25795 {
-                        self.gsr_invert()
-                    } else {
-                        self.gsr_enable()
-                    }
-                } else if (25797..25805).contains(&jed_idx) {
-                    let offs = jed_idx - 25797;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
-                    } else {
-                        self.gts_enable()[gts_idx]
-                    }
-                } else if jed_idx == 25805 {
-                    self.global_term()
-                } else if jed_idx == 25806 {
-                    XC2C64_IVOLTAGE
-                } else if jed_idx == 25807 {
-                    XC2C64_OVOLTAGE
-                } else if *self == XC2Device::XC2C64A && jed_idx == 25808 {
-                    self.io_input_voltage()[0]
-                } else if *self == XC2Device::XC2C64A && jed_idx == 25809 {
-                    self.io_output_voltage()[0]
-                } else if *self == XC2Device::XC2C64A && jed_idx == 25810 {
-                    self.io_input_voltage()[1]
-                } else if *self == XC2Device::XC2C64A && jed_idx == 25811 {
-                    self.io_output_voltage()[1]
-                } else {
-                    unreachable!()
                 }
-            }
-            XC2Device::XC2C128 => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 28;
-                    let zia_offs = offs % 28;
-
-                    let x_base = (27 - zia_offs) * 2 + fb % 2;
-                    let y = zia_row + if let 2 | 3 | 6 | 7 = fb { 40 } else { 0 };
-                    let x = match fb {
-                        0..=3 => 160 + x_base,
-                        4..=7 => 536 + x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = NOGAP_AND_TERM_PERMUTE[group_80] * 2 + 1 - offs_80 % 2;
-                    let y = offs_80 / 2 + if let 2 | 3 | 6 | 7 = fb { 40 } else { 0 };
-                    let x = match fb {
-                        0 | 2 => 48 + x_base,
-                        1 | 3 => 327 - x_base,
-                        4 | 6 => 424 + x_base,
-                        5 | 7 => 703 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let y_base = SIDE_OR_ROW_PERMUTE[group_16 / 2];
-                    let x_base = offs_16 * 2
-                        + if y_base >= 23 {
-                            1 - group_16 % 2
-                        } else {
-                            group_16 % 2
-                        };
-                    let y = y_base + if let 2 | 3 | 6 | 7 = fb { 40 } else { 0 };
-                    let x = match fb {
-                        0 | 2 => 16 + x_base,
-                        1 | 3 => 359 - x_base,
-                        4 | 6 => 392 + x_base,
-                        5 | 7 => 735 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
-                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
-                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
-                        BIG_MC_WITH_IO_PERMUTE[mc_offs]
-                    } else {
-                        BIG_MC_NO_IO_PERMUTE[mc_offs]
-                    };
-                    let y = BIG_MC_STARTING_ROW[mc]
-                        + if let 2 | 3 | 6 | 7 = fb { 40 } else { 0 }
-                        + permute_c.y;
-                    let x = match fb {
-                        0 | 2 => 1 + permute_c.x,
-                        1 | 3 => 374 - permute_c.x,
-                        4 | 6 => 377 + permute_c.x,
-                        5 | 7 => 750 - permute_c.x,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if (55316..55319).contains(&jed_idx) {
-                    self.gck()[jed_idx - 55316]
-                } else if jed_idx == 55319 {
-                    self.clk_div_enable()
-                } else if (55320..55323).contains(&jed_idx) {
-                    self.clk_div_ratio()[jed_idx - 55320]
-                } else if jed_idx == 55323 {
-                    self.clk_div_delay()
-                } else if (55324..55326).contains(&jed_idx) {
-                    if jed_idx == 55324 {
-                        self.gsr_invert()
-                    } else {
-                        self.gsr_enable()
-                    }
-                } else if (55326..55334).contains(&jed_idx) {
-                    let offs = jed_idx - 55326;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
-                    } else {
-                        self.gts_enable()[gts_idx]
-                    }
-                } else if jed_idx == 55334 {
-                    self.global_term()
-                } else if jed_idx == 55335 {
-                    self.data_gate()
-                } else if (55336..55338).contains(&jed_idx) {
-                    self.io_input_voltage()[jed_idx - 55336]
-                } else if (55338..55340).contains(&jed_idx) {
-                    self.io_output_voltage()[jed_idx - 55338]
-                } else if jed_idx == 55340 {
-                    self.vref_enable()
-                } else {
-                    unreachable!()
-                }
-            }
-            XC2Device::XC2C256 => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 48;
-                    let zia_offs = offs % 48;
-
-                    let x_base = (47 - zia_offs) * 2 + fb % 2;
-                    let y = zia_row
-                        + if zia_row >= 20 { 8 } else { 0 }
-                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
-                            48
-                        } else {
-                            0
-                        };
-                    let x = match fb {
-                        0..=3 => 123 + x_base,
-                        4..=7 => 463 + x_base,
-                        8..=11 => 805 + x_base,
-                        12..=15 => 1145 + x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
-                    let y = offs_80 / 2
-                        + if offs_80 >= 40 { 8 } else { 0 }
-                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
-                            48
-                        } else {
-                            0
-                        };
-                    let x = match fb {
-                        0 | 2 => 11 + x_base,
-                        1 | 3 => 330 - x_base,
-                        4 | 6 => 351 + x_base,
-                        5 | 7 => 670 - x_base,
-                        8 | 10 => 693 + x_base,
-                        9 | 11 => 1012 - x_base,
-                        12 | 14 => 1033 + x_base,
-                        13 | 15 => 1352 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let x_base = offs_16 % 2 + group_16 * 2;
-                    let y = 20
-                        + offs_16 / 2
-                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
-                            48
-                        } else {
-                            0
-                        };
-                    let x = match fb {
-                        0 | 2 => 11 + x_base,
-                        1 | 3 => 330 - x_base,
-                        4 | 6 => 351 + x_base,
-                        5 | 7 => 670 - x_base,
-                        8 | 10 => 693 + x_base,
-                        9 | 11 => 1012 - x_base,
-                        12 | 14 => 1033 + x_base,
-                        13 | 15 => 1352 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
+                XC2Device::XC2C256 => {
                     let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
                     let permute_c = if self.has_io_at(fb as u8, mc as u8) {
                         XC2C256_MC_WITH_IO_PERMUTE[mc_offs]
                     } else {
                         XC2C256_MC_NO_IO_PERMUTE[mc_offs]
                     };
-                    let y = mc * 3
-                        + if let 2 | 3 | 6 | 7 | 10 | 11 | 14 | 15 = fb {
-                            48
-                        } else {
-                            0
-                        }
-                        + permute_c.y;
-                    let x = match fb {
-                        0 | 2 => 1 + permute_c.x,
-                        1 | 3 => 340 - permute_c.x,
-                        4 | 6 => 341 + permute_c.x,
-                        5 | 7 => 680 - permute_c.x,
-                        8 | 10 => 683 + permute_c.x,
-                        9 | 11 => 1022 - permute_c.x,
-                        12 | 14 => 1023 + permute_c.x,
-                        13 | 15 => 1362 - permute_c.x,
-                        _ => unreachable!(),
+
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8) + Coordinate::new(0, mc * 3) + permute_c
+                    } else {
+                        self.fb_corner(fb as u8)
+                            .sub_x_add_y(Coordinate::new(0, mc * 3) + permute_c)
+                    }
+                }
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
+                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
+                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
+                        BIG_MC_WITH_IO_PERMUTE[mc_offs]
+                    } else {
+                        BIG_MC_NO_IO_PERMUTE[mc_offs]
                     };
 
-                    Coordinate::new(x, y)
-                } else if (123224..123227).contains(&jed_idx) {
-                    self.gck()[jed_idx - 123224]
-                } else if jed_idx == 123227 {
-                    self.clk_div_enable()
-                } else if (123228..123231).contains(&jed_idx) {
-                    self.clk_div_ratio()[jed_idx - 123228]
-                } else if jed_idx == 123231 {
-                    self.clk_div_delay()
-                } else if (123232..123234).contains(&jed_idx) {
-                    if jed_idx == 123232 {
-                        self.gsr_invert()
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8)
+                            + Coordinate::new(0, BIG_MC_STARTING_ROW[mc])
+                            + permute_c
                     } else {
-                        self.gsr_enable()
+                        self.fb_corner(fb as u8)
+                            .sub_x_add_y(Coordinate::new(0, BIG_MC_STARTING_ROW[mc]) + permute_c)
                     }
-                } else if (123234..123242).contains(&jed_idx) {
-                    let offs = jed_idx - 123234;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
-                    } else {
-                        self.gts_enable()[gts_idx]
-                    }
-                } else if jed_idx == 123242 {
-                    self.global_term()
-                } else if jed_idx == 123243 {
-                    self.data_gate()
-                } else if (123244..123246).contains(&jed_idx) {
-                    self.io_input_voltage()[jed_idx - 123244]
-                } else if (123246..123248).contains(&jed_idx) {
-                    self.io_output_voltage()[jed_idx - 123246]
-                } else if jed_idx == 123248 {
-                    self.vref_enable()
-                } else {
-                    unreachable!()
                 }
             }
-            XC2Device::XC2C384 => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 74;
-                    let zia_offs = offs % 74;
+        } else if let Some((fb, offs)) = self._is_or(jed_idx) {
+            match self {
+                XC2Device::XC2C32
+                | XC2Device::XC2C32A
+                | XC2Device::XC2C64
+                | XC2Device::XC2C64A
+                | XC2Device::XC2C256 => {
+                    let group_16 = offs / 16;
+                    let offs_16 = offs % 16;
 
-                    let x_base = (73 - zia_offs) * 2 + fb % 2;
-                    let y = zia_row
-                        + match fb {
-                            0 | 1 | 6 | 7 | 12 | 13 | 18 | 19 => 0,
-                            2 | 3 | 8 | 9 | 14 | 15 | 20 | 21 => 40,
-                            4 | 5 | 10 | 11 | 16 | 17 | 22 | 23 => 80,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0..=5 => 160 + x_base,
-                        6..=11 => 626 + x_base,
-                        12..=17 => 1094 + x_base,
-                        18..=23 => 1560 + x_base,
-                        _ => unreachable!(),
-                    };
+                    let x_base = offs_16 % 2 + group_16 * 2;
+                    let y_base = 20 + offs_16 / 2;
 
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
+                    let mc_offset = if *self == XC2Device::XC2C256 { 10 } else { 9 };
 
-                    let x_base = NOGAP_AND_TERM_PERMUTE[group_80] * 2 + 1 - offs_80 % 2;
-                    let y = offs_80 / 2
-                        + match fb {
-                            0 | 1 | 6 | 7 | 12 | 13 | 18 | 19 => 0,
-                            2 | 3 | 8 | 9 | 14 | 15 | 20 | 21 => 40,
-                            4 | 5 | 10 | 11 | 16 | 17 | 22 | 23 => 80,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0 | 2 | 4 => 48 + x_base,
-                        1 | 3 | 5 => 419 - x_base,
-                        6 | 8 | 10 => 514 + x_base,
-                        7 | 9 | 11 => 885 - x_base,
-                        12 | 14 | 16 => 982 + x_base,
-                        13 | 15 | 17 => 1353 - x_base,
-                        18 | 20 | 22 => 1448 + x_base,
-                        19 | 21 | 23 => 1819 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8)
+                            + Coordinate::new(mc_offset, 0)
+                            + Coordinate::new(x_base, y_base)
+                    } else {
+                        self.fb_corner(fb as u8).sub_x_add_y(
+                            Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
+                        )
+                    }
+                }
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
                     let group_16 = offs / 16;
                     let offs_16 = offs % 16;
 
@@ -697,234 +338,311 @@ impl JedecCompat for XC2Device {
                         } else {
                             group_16 % 2
                         };
-                    let y = y_base
-                        + match fb {
-                            0 | 1 | 6 | 7 | 12 | 13 | 18 | 19 => 0,
-                            2 | 3 | 8 | 9 | 14 | 15 | 20 | 21 => 40,
-                            4 | 5 | 10 | 11 | 16 | 17 | 22 | 23 => 80,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0 | 2 | 4 => 16 + x_base,
-                        1 | 3 | 5 => 451 - x_base,
-                        6 | 8 | 10 => 482 + x_base,
-                        7 | 9 | 11 => 917 - x_base,
-                        12 | 14 | 16 => 950 + x_base,
-                        13 | 15 | 17 => 1385 - x_base,
-                        18 | 20 | 22 => 1416 + x_base,
-                        19 | 21 | 23 => 1851 - x_base,
-                        _ => unreachable!(),
-                    };
 
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
-                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
-                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
-                        BIG_MC_WITH_IO_PERMUTE[mc_offs]
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8)
+                            + Coordinate::new(15, 0)
+                            + Coordinate::new(x_base, y_base)
                     } else {
-                        BIG_MC_NO_IO_PERMUTE[mc_offs]
-                    };
-                    let y = BIG_MC_STARTING_ROW[mc]
-                        + match fb {
-                            0 | 1 | 6 | 7 | 12 | 13 | 18 | 19 => 0,
-                            2 | 3 | 8 | 9 | 14 | 15 | 20 | 21 => 40,
-                            4 | 5 | 10 | 11 | 16 | 17 | 22 | 23 => 80,
-                            _ => unreachable!(),
-                        }
-                        + permute_c.y;
-                    let x = match fb {
-                        0 | 2 | 4 => 1 + permute_c.x,
-                        1 | 3 | 5 => 466 - permute_c.x,
-                        6 | 8 | 10 => 467 + permute_c.x,
-                        7 | 9 | 11 => 932 - permute_c.x,
-                        12 | 14 | 16 => 935 + permute_c.x,
-                        13 | 15 | 17 => 1400 - permute_c.x,
-                        18 | 20 | 22 => 1401 + permute_c.x,
-                        19 | 21 | 23 => 1866 - permute_c.x,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if (209328..209331).contains(&jed_idx) {
-                    self.gck()[jed_idx - 209328]
-                } else if jed_idx == 209331 {
-                    self.clk_div_enable()
-                } else if (209332..209335).contains(&jed_idx) {
-                    self.clk_div_ratio()[jed_idx - 209332]
-                } else if jed_idx == 209335 {
-                    self.clk_div_delay()
-                } else if (209336..209338).contains(&jed_idx) {
-                    if jed_idx == 209336 {
-                        self.gsr_invert()
-                    } else {
-                        self.gsr_enable()
+                        self.fb_corner(fb as u8)
+                            .sub_x_add_y(Coordinate::new(15, 0) + Coordinate::new(x_base, y_base))
                     }
-                } else if (209338..209346).contains(&jed_idx) {
-                    let offs = jed_idx - 209338;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
-                    } else {
-                        self.gts_enable()[gts_idx]
-                    }
-                } else if jed_idx == 209346 {
-                    self.global_term()
-                } else if jed_idx == 209347 {
-                    self.data_gate()
-                } else if (209348..209352).contains(&jed_idx) {
-                    self.io_input_voltage()[jed_idx - 209348]
-                } else if (209352..209356).contains(&jed_idx) {
-                    self.io_output_voltage()[jed_idx - 209352]
-                } else if jed_idx == 209356 {
-                    self.vref_enable()
-                } else {
-                    unreachable!()
                 }
             }
-            XC2Device::XC2C512 => {
-                if let Some((fb, offs)) = self._is_zia(jed_idx) {
-                    let zia_row = offs / 88;
-                    let zia_offs = offs % 88;
+        } else if let Some((fb, offs)) = self._is_and(jed_idx) {
+            match self {
+                XC2Device::XC2C32
+                | XC2Device::XC2C32A
+                | XC2Device::XC2C64
+                | XC2Device::XC2C64A
+                | XC2Device::XC2C256 => {
+                    let group_80 = offs / 80;
+                    let offs_80 = offs % 80;
 
-                    let x_base = (87 - zia_offs) * 2 + fb % 2;
-                    let y = zia_row
-                        + match fb {
-                            0 | 1 | 8 | 9 | 16 | 17 | 24 | 25 => 0,
-                            2 | 3 | 10 | 11 | 18 | 19 | 26 | 27 => 40,
-                            4 | 5 | 12 | 13 | 20 | 21 | 28 | 29 => 80,
-                            6 | 7 | 14 | 15 | 22 | 23 | 30 | 31 => 120,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0..=7 => 160 + x_base,
-                        8..=15 => 654 + x_base,
-                        16..=23 => 1150 + x_base,
-                        24..=31 => 1644 + x_base,
-                        _ => unreachable!(),
-                    };
+                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
+                    let y_base = offs_80 / 2 + if offs_80 >= 40 { 8 } else { 0 };
 
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_and(jed_idx) {
+                    let mc_offset = if *self == XC2Device::XC2C256 { 10 } else { 9 };
+
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8)
+                            + Coordinate::new(mc_offset, 0)
+                            + Coordinate::new(x_base, y_base)
+                    } else {
+                        self.fb_corner(fb as u8).sub_x_add_y(
+                            Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
+                        )
+                    }
+                }
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
                     let group_80 = offs / 80;
                     let offs_80 = offs % 80;
 
                     let x_base = NOGAP_AND_TERM_PERMUTE[group_80] * 2 + 1 - offs_80 % 2;
-                    let y = offs_80 / 2
-                        + match fb {
-                            0 | 1 | 8 | 9 | 16 | 17 | 24 | 25 => 0,
-                            2 | 3 | 10 | 11 | 18 | 19 | 26 | 27 => 40,
-                            4 | 5 | 12 | 13 | 20 | 21 | 28 | 29 => 80,
-                            6 | 7 | 14 | 15 | 22 | 23 | 30 | 31 => 120,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0 | 2 | 4 | 6 => 48 + x_base,
-                        1 | 3 | 5 | 7 => 447 - x_base,
-                        8 | 10 | 12 | 14 => 542 + x_base,
-                        9 | 11 | 13 | 15 => 941 - x_base,
-                        16 | 18 | 20 | 22 => 1038 + x_base,
-                        17 | 19 | 21 | 23 => 1437 - x_base,
-                        24 | 26 | 28 | 30 => 1532 + x_base,
-                        25 | 27 | 29 | 31 => 1931 - x_base,
-                        _ => unreachable!(),
-                    };
+                    let y_base = offs_80 / 2;
 
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
+                    if fb % 2 == 0 {
+                        self.fb_corner(fb as u8)
+                            + Coordinate::new(15 + MCS_PER_FB * 2, 0)
+                            + Coordinate::new(x_base, y_base)
+                    } else {
+                        self.fb_corner(fb as u8).sub_x_add_y(
+                            Coordinate::new(15 + MCS_PER_FB * 2, 0)
+                                + Coordinate::new(x_base, y_base),
+                        )
+                    }
+                }
+            }
+        } else if let Some((fb, offs)) = self._is_zia(jed_idx) {
+            let zia_row = offs / self.zia_width();
+            let zia_offs = offs % self.zia_width();
 
-                    let y_base = SIDE_OR_ROW_PERMUTE[group_16 / 2];
-                    let x_base = offs_16 * 2
-                        + if y_base >= 23 {
-                            1 - group_16 % 2
+            let x_base = (self.zia_width() - 1 - zia_offs) * 2 + fb % 2;
+            let y_base = match self {
+                XC2Device::XC2C32
+                | XC2Device::XC2C32A
+                | XC2Device::XC2C64
+                | XC2Device::XC2C64A
+                | XC2Device::XC2C256 => zia_row + if zia_row >= 20 { 8 } else { 0 },
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => zia_row,
+            };
+
+            let mc_or_and_offset = match self {
+                XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                    9 + ANDTERMS_PER_FB * 2
+                }
+                XC2Device::XC2C256 => 10 + ANDTERMS_PER_FB * 2,
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
+                    15 + MCS_PER_FB * 2 + ANDTERMS_PER_FB * 2
+                }
+            };
+
+            self.fb_corner((fb & !1) as u8)
+                + Coordinate::new(mc_or_and_offset, 0)
+                + Coordinate::new(x_base, y_base)
+        } else {
+            match self {
+                XC2Device::XC2C32 | XC2Device::XC2C32A => {
+                    if (12256..12259).contains(&jed_idx) {
+                        self.gck()[jed_idx - 12256]
+                    } else if (12259..12261).contains(&jed_idx) {
+                        if jed_idx == 12259 {
+                            self.gsr_invert()
                         } else {
-                            group_16 % 2
-                        };
-                    let y = y_base
-                        + match fb {
-                            0 | 1 | 8 | 9 | 16 | 17 | 24 | 25 => 0,
-                            2 | 3 | 10 | 11 | 18 | 19 | 26 | 27 => 40,
-                            4 | 5 | 12 | 13 | 20 | 21 | 28 | 29 => 80,
-                            6 | 7 | 14 | 15 | 22 | 23 | 30 | 31 => 120,
-                            _ => unreachable!(),
-                        };
-                    let x = match fb {
-                        0 | 2 | 4 | 6 => 16 + x_base,
-                        1 | 3 | 5 | 7 => 479 - x_base,
-                        8 | 10 | 12 | 14 => 510 + x_base,
-                        9 | 11 | 13 | 15 => 973 - x_base,
-                        16 | 18 | 20 | 22 => 1006 + x_base,
-                        17 | 19 | 21 | 23 => 1469 - x_base,
-                        24 | 26 | 28 | 30 => 1500 + x_base,
-                        25 | 27 | 29 | 31 => 1963 - x_base,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if let Some((fb, offs)) = self._is_mc(jed_idx) {
-                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
-                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
-                        BIG_MC_WITH_IO_PERMUTE[mc_offs]
-                    } else {
-                        BIG_MC_NO_IO_PERMUTE[mc_offs]
-                    };
-                    let y = BIG_MC_STARTING_ROW[mc]
-                        + match fb {
-                            0 | 1 | 8 | 9 | 16 | 17 | 24 | 25 => 0,
-                            2 | 3 | 10 | 11 | 18 | 19 | 26 | 27 => 40,
-                            4 | 5 | 12 | 13 | 20 | 21 | 28 | 29 => 80,
-                            6 | 7 | 14 | 15 | 22 | 23 | 30 | 31 => 120,
-                            _ => unreachable!(),
+                            self.gsr_enable()
                         }
-                        + permute_c.y;
-                    let x = match fb {
-                        0 | 2 | 4 | 6 => 1 + permute_c.x,
-                        1 | 3 | 5 | 7 => 494 - permute_c.x,
-                        8 | 10 | 12 | 14 => 495 + permute_c.x,
-                        9 | 11 | 13 | 15 => 988 - permute_c.x,
-                        16 | 18 | 20 | 22 => 991 + permute_c.x,
-                        17 | 19 | 21 | 23 => 1484 - permute_c.x,
-                        24 | 26 | 28 | 30 => 1485 + permute_c.x,
-                        25 | 27 | 29 | 31 => 1978 - permute_c.x,
-                        _ => unreachable!(),
-                    };
-
-                    Coordinate::new(x, y)
-                } else if (296374..296377).contains(&jed_idx) {
-                    self.gck()[jed_idx - 296374]
-                } else if jed_idx == 296377 {
-                    self.clk_div_enable()
-                } else if (296378..296381).contains(&jed_idx) {
-                    self.clk_div_ratio()[jed_idx - 296378]
-                } else if jed_idx == 296381 {
-                    self.clk_div_delay()
-                } else if (296382..296384).contains(&jed_idx) {
-                    if jed_idx == 296382 {
-                        self.gsr_invert()
+                    } else if (12261..12269).contains(&jed_idx) {
+                        let offs = jed_idx - 12261;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 12269 {
+                        self.global_term()
+                    } else if jed_idx == 12270 {
+                        XC2C32_OVOLTAGE
+                    } else if jed_idx == 12271 {
+                        XC2C32_IVOLTAGE
+                    } else if jed_idx == 12272 {
+                        XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER
+                    } else if jed_idx == 12273 {
+                        XC2C32_EXTRA_IBUF_TERMINATION
+                    } else if *self == XC2Device::XC2C32A && jed_idx == 12274 {
+                        self.io_input_voltage()[0]
+                    } else if *self == XC2Device::XC2C32A && jed_idx == 12275 {
+                        self.io_output_voltage()[0]
+                    } else if *self == XC2Device::XC2C32A && jed_idx == 12276 {
+                        self.io_input_voltage()[1]
+                    } else if *self == XC2Device::XC2C32A && jed_idx == 12277 {
+                        self.io_output_voltage()[1]
                     } else {
-                        self.gsr_enable()
+                        unreachable!()
                     }
-                } else if (296384..296392).contains(&jed_idx) {
-                    let offs = jed_idx - 296384;
-                    let gts_idx = offs / 2;
-                    if offs % 2 == 0 {
-                        self.gts_invert()[gts_idx]
+                }
+                XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                    if (25792..25795).contains(&jed_idx) {
+                        self.gck()[jed_idx - 25792]
+                    } else if (25795..25797).contains(&jed_idx) {
+                        if jed_idx == 25795 {
+                            self.gsr_invert()
+                        } else {
+                            self.gsr_enable()
+                        }
+                    } else if (25797..25805).contains(&jed_idx) {
+                        let offs = jed_idx - 25797;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 25805 {
+                        self.global_term()
+                    } else if jed_idx == 25806 {
+                        XC2C64_IVOLTAGE
+                    } else if jed_idx == 25807 {
+                        XC2C64_OVOLTAGE
+                    } else if *self == XC2Device::XC2C64A && jed_idx == 25808 {
+                        self.io_input_voltage()[0]
+                    } else if *self == XC2Device::XC2C64A && jed_idx == 25809 {
+                        self.io_output_voltage()[0]
+                    } else if *self == XC2Device::XC2C64A && jed_idx == 25810 {
+                        self.io_input_voltage()[1]
+                    } else if *self == XC2Device::XC2C64A && jed_idx == 25811 {
+                        self.io_output_voltage()[1]
                     } else {
-                        self.gts_enable()[gts_idx]
+                        unreachable!()
                     }
-                } else if jed_idx == 296392 {
-                    self.global_term()
-                } else if jed_idx == 296393 {
-                    self.data_gate()
-                } else if (296394..296398).contains(&jed_idx) {
-                    self.io_input_voltage()[jed_idx - 296394]
-                } else if (296398..296402).contains(&jed_idx) {
-                    self.io_output_voltage()[jed_idx - 296398]
-                } else if jed_idx == 296402 {
-                    self.vref_enable()
-                } else {
-                    unreachable!()
+                }
+                XC2Device::XC2C128 => {
+                    if (55316..55319).contains(&jed_idx) {
+                        self.gck()[jed_idx - 55316]
+                    } else if jed_idx == 55319 {
+                        self.clk_div_enable()
+                    } else if (55320..55323).contains(&jed_idx) {
+                        self.clk_div_ratio()[jed_idx - 55320]
+                    } else if jed_idx == 55323 {
+                        self.clk_div_delay()
+                    } else if (55324..55326).contains(&jed_idx) {
+                        if jed_idx == 55324 {
+                            self.gsr_invert()
+                        } else {
+                            self.gsr_enable()
+                        }
+                    } else if (55326..55334).contains(&jed_idx) {
+                        let offs = jed_idx - 55326;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 55334 {
+                        self.global_term()
+                    } else if jed_idx == 55335 {
+                        self.data_gate()
+                    } else if (55336..55338).contains(&jed_idx) {
+                        self.io_input_voltage()[jed_idx - 55336]
+                    } else if (55338..55340).contains(&jed_idx) {
+                        self.io_output_voltage()[jed_idx - 55338]
+                    } else if jed_idx == 55340 {
+                        self.vref_enable()
+                    } else {
+                        unreachable!()
+                    }
+                }
+                XC2Device::XC2C256 => {
+                    if (123224..123227).contains(&jed_idx) {
+                        self.gck()[jed_idx - 123224]
+                    } else if jed_idx == 123227 {
+                        self.clk_div_enable()
+                    } else if (123228..123231).contains(&jed_idx) {
+                        self.clk_div_ratio()[jed_idx - 123228]
+                    } else if jed_idx == 123231 {
+                        self.clk_div_delay()
+                    } else if (123232..123234).contains(&jed_idx) {
+                        if jed_idx == 123232 {
+                            self.gsr_invert()
+                        } else {
+                            self.gsr_enable()
+                        }
+                    } else if (123234..123242).contains(&jed_idx) {
+                        let offs = jed_idx - 123234;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 123242 {
+                        self.global_term()
+                    } else if jed_idx == 123243 {
+                        self.data_gate()
+                    } else if (123244..123246).contains(&jed_idx) {
+                        self.io_input_voltage()[jed_idx - 123244]
+                    } else if (123246..123248).contains(&jed_idx) {
+                        self.io_output_voltage()[jed_idx - 123246]
+                    } else if jed_idx == 123248 {
+                        self.vref_enable()
+                    } else {
+                        unreachable!()
+                    }
+                }
+                XC2Device::XC2C384 => {
+                    if (209328..209331).contains(&jed_idx) {
+                        self.gck()[jed_idx - 209328]
+                    } else if jed_idx == 209331 {
+                        self.clk_div_enable()
+                    } else if (209332..209335).contains(&jed_idx) {
+                        self.clk_div_ratio()[jed_idx - 209332]
+                    } else if jed_idx == 209335 {
+                        self.clk_div_delay()
+                    } else if (209336..209338).contains(&jed_idx) {
+                        if jed_idx == 209336 {
+                            self.gsr_invert()
+                        } else {
+                            self.gsr_enable()
+                        }
+                    } else if (209338..209346).contains(&jed_idx) {
+                        let offs = jed_idx - 209338;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 209346 {
+                        self.global_term()
+                    } else if jed_idx == 209347 {
+                        self.data_gate()
+                    } else if (209348..209352).contains(&jed_idx) {
+                        self.io_input_voltage()[jed_idx - 209348]
+                    } else if (209352..209356).contains(&jed_idx) {
+                        self.io_output_voltage()[jed_idx - 209352]
+                    } else if jed_idx == 209356 {
+                        self.vref_enable()
+                    } else {
+                        unreachable!()
+                    }
+                }
+                XC2Device::XC2C512 => {
+                    if (296374..296377).contains(&jed_idx) {
+                        self.gck()[jed_idx - 296374]
+                    } else if jed_idx == 296377 {
+                        self.clk_div_enable()
+                    } else if (296378..296381).contains(&jed_idx) {
+                        self.clk_div_ratio()[jed_idx - 296378]
+                    } else if jed_idx == 296381 {
+                        self.clk_div_delay()
+                    } else if (296382..296384).contains(&jed_idx) {
+                        if jed_idx == 296382 {
+                            self.gsr_invert()
+                        } else {
+                            self.gsr_enable()
+                        }
+                    } else if (296384..296392).contains(&jed_idx) {
+                        let offs = jed_idx - 296384;
+                        let gts_idx = offs / 2;
+                        if offs % 2 == 0 {
+                            self.gts_invert()[gts_idx]
+                        } else {
+                            self.gts_enable()[gts_idx]
+                        }
+                    } else if jed_idx == 296392 {
+                        self.global_term()
+                    } else if jed_idx == 296393 {
+                        self.data_gate()
+                    } else if (296394..296398).contains(&jed_idx) {
+                        self.io_input_voltage()[jed_idx - 296394]
+                    } else if (296398..296402).contains(&jed_idx) {
+                        self.io_output_voltage()[jed_idx - 296398]
+                    } else if jed_idx == 296402 {
+                        self.vref_enable()
+                    } else {
+                        unreachable!()
+                    }
                 }
             }
         }
