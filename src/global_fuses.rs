@@ -9,6 +9,9 @@ pub const XC2C32_IVOLTAGE: Coordinate = Coordinate::new(130, 25);
 pub const XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER: Coordinate = Coordinate::new(131, 24);
 pub const XC2C32_EXTRA_IBUF_TERMINATION: Coordinate = Coordinate::new(132, 24);
 
+pub const XC2C64_OVOLTAGE: Coordinate = Coordinate::new(138, 23);
+pub const XC2C64_IVOLTAGE: Coordinate = Coordinate::new(137, 23);
+
 pub trait GlobalFuses {
     fn done1(&self) -> Coordinate;
     fn gck(&self) -> [Coordinate; 3];
@@ -189,8 +192,11 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(131, 25), Coordinate::new(133, 25)];
                 X
             }
-            XC2Device::XC2C64 => todo!(),
-            XC2Device::XC2C64A => todo!(),
+            XC2Device::XC2C64 => &[XC2C64_IVOLTAGE],
+            XC2Device::XC2C64A => {
+                const X: &[Coordinate] = &[Coordinate::new(139, 23), Coordinate::new(141, 23)];
+                X
+            }
             XC2Device::XC2C128 => todo!(),
             XC2Device::XC2C256 => todo!(),
             XC2Device::XC2C384 => todo!(),
@@ -205,8 +211,11 @@ impl GlobalFuses for XC2Device {
                 const X: &[Coordinate] = &[Coordinate::new(132, 25), Coordinate::new(134, 25)];
                 X
             }
-            XC2Device::XC2C64 => todo!(),
-            XC2Device::XC2C64A => todo!(),
+            XC2Device::XC2C64 => &[XC2C64_OVOLTAGE],
+            XC2Device::XC2C64A => {
+                const X: &[Coordinate] = &[Coordinate::new(140, 23), Coordinate::new(142, 23)];
+                X
+            }
             XC2Device::XC2C128 => todo!(),
             XC2Device::XC2C256 => todo!(),
             XC2Device::XC2C384 => todo!(),
