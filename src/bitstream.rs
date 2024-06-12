@@ -81,7 +81,7 @@ impl BuriedMacrocells for XC2Device {
                 _ => unreachable!(),
             },
             XC2Device::XC2C256 => todo!(),
-            XC2Device::XC2C384 => todo!(),
+            XC2Device::XC2C384 => !(5..11).contains(&mc),
             XC2Device::XC2C512 => todo!(),
         }
     }

@@ -207,7 +207,15 @@ impl GlobalFuses for XC2Device {
                 X
             }
             XC2Device::XC2C256 => todo!(),
-            XC2Device::XC2C384 => todo!(),
+            XC2Device::XC2C384 => {
+                const X: &[Coordinate] = &[
+                    Coordinate::new(936, 17),
+                    Coordinate::new(1864, 17),
+                    Coordinate::new(1, 17),
+                    Coordinate::new(929, 17),
+                ];
+                X
+            }
             XC2Device::XC2C512 => todo!(),
         }
     }
@@ -229,7 +237,15 @@ impl GlobalFuses for XC2Device {
                 X
             }
             XC2Device::XC2C256 => todo!(),
-            XC2Device::XC2C384 => todo!(),
+            XC2Device::XC2C384 => {
+                const X: &[Coordinate] = &[
+                    Coordinate::new(937, 17),
+                    Coordinate::new(1865, 17),
+                    Coordinate::new(2, 17),
+                    Coordinate::new(930, 17),
+                ];
+                X
+            }
             XC2Device::XC2C512 => todo!(),
         }
     }
@@ -240,9 +256,9 @@ impl GlobalFuses for XC2Device {
                 unreachable!()
             }
             XC2Device::XC2C128 => Coordinate::new(10, 67),
-            XC2Device::XC2C256 => todo!(),
-            XC2Device::XC2C384 => todo!(),
-            XC2Device::XC2C512 => todo!(),
+            XC2Device::XC2C256 => Coordinate::new(177, 23),
+            XC2Device::XC2C384 => Coordinate::new(3, 17),
+            XC2Device::XC2C512 => Coordinate::new(1, 147),
         }
     }
 
