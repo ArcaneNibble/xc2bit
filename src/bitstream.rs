@@ -2,11 +2,12 @@
 
 use bittwiddler_core::prelude::{
     BitArray as BittwiddlerBitArray, Coordinate, HumanLevelThatHasState, HumanSinkForStatePieces,
+    PropertyAccessor,
 };
 use bittwiddler_macros::bittwiddler_properties;
 use bitvec::prelude::*;
 
-use crate::{global_bits_code::GCK, global_fuses::GlobalFuses, partdb::XC2Part};
+use crate::{fb::FunctionBlock, global_bits_code::GCK, global_fuses::GlobalFuses, partdb::XC2Part};
 
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
@@ -84,7 +85,15 @@ impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {
         BitHolder::set(&mut self.bits, c.y * fuse_dims_w + c.x, val)
     }
 }
-
+#[allow(private_bounds)]
+impl<B: BitHolder> Coolrunner2<B> {
+    pub fn get_prop<A: PropertyAccessor>(&self, accessor: &A) -> A::Output {
+        accessor.get(self)
+    }
+    pub fn set_prop<A: PropertyAccessor>(&mut self, accessor: &A, val: A::Output) {
+        accessor.set(self, val);
+    }
+}
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> HumanLevelThatHasState for Coolrunner2<B> {
     fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
@@ -92,6 +101,14 @@ impl<B: BitHolder> HumanLevelThatHasState for Coolrunner2<B> {
 #[bittwiddler_properties(alloc_feature_gate = "alloc")]
 #[allow(private_bounds)]
 impl<B: BitHolder> Coolrunner2<B> {
+    pub fn fb(&self, fb: u8) -> FunctionBlock {
+        assert!((fb as usize) < self.part.device.num_fbs());
+        FunctionBlock {
+            device: self.part.device,
+            fb,
+        }
+    }
+
     #[bittwiddler::property]
     pub fn gck_enabled(&self, gck_idx: u8) -> GCK {
         assert!(gck_idx < 3);
@@ -105,6 +122,10 @@ impl<B: BitHolder> Coolrunner2<B> {
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     fn _automagic_construct_all_gck_enabled(&self) -> impl Iterator<Item = GCK> {
         (0..3).map(|gck_idx| self.gck_enabled(gck_idx))
+    }
+
+    fn _automagic_construct_all_fb(&self) -> impl Iterator<Item = FunctionBlock> {
+        (0..self.part.device.num_fbs()).map(|fb| self.fb(fb as u8))
     }
 }
 
@@ -121,5 +142,13 @@ mod tests {
         assert_eq!(bitstream.bits.len(), 260 * 50);
         BittwiddlerBitArray::set(&mut bitstream, Coordinate::new(1, 1), true);
         assert!(bitstream.bits[261]);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn smoke_test_rw_in_rust() {
+        let mut bitstream = Coolrunner2::new(XC2Part::new(XC2Device::XC2C32A, None, None).unwrap());
+
+        bitstream.set_prop(&bitstream.fb(0).and_term(1).inp(2), true);
     }
 }

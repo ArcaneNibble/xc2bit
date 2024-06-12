@@ -11,7 +11,7 @@ use core::fmt::Write;
 use serde::{Deserialize, Serialize};
 
 /// Coolrunner-II devices
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum XC2Device {
     XC2C32,
@@ -115,7 +115,7 @@ impl XC2Device {
 }
 
 /// All possible speed grades
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpeedGrade {
     _4,
@@ -150,7 +150,7 @@ impl TryFrom<&str> for SpeedGrade {
 }
 
 /// All possible physical packages, not including Pb-free-ness
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum PhysicalPackageShape {
     QF32,
@@ -172,7 +172,7 @@ impl fmt::Display for PhysicalPackageShape {
 }
 
 /// All possible physical packages
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PhysicalPackage {
     pub shape: PhysicalPackageShape,
@@ -267,7 +267,7 @@ impl Display for PhysicalPackage {
 }
 
 /// One specific part, i.e. device type, speed grade, and package all in one struct
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct XC2Part {
     pub device: XC2Device,

@@ -1,3 +1,5 @@
+//! Global bits
+
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::bittwiddler_hierarchy_level;
 
@@ -13,7 +15,7 @@ impl PropertyAccessor for GCK {
     type BoolArray = [bool; 1];
     type Output = bool;
 
-    fn get_bit_pos(&self, _biti: usize) -> Coordinate {
-        self.device.gck()[self.gck_idx as usize]
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (self.device.gck()[self.gck_idx as usize], false)
     }
 }

@@ -13,6 +13,7 @@ use crate::{
     bitstream::{BitHolder, Coolrunner2},
     global_fuses::*,
     partdb::{XC2Device, XC2Part},
+    ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
 };
 
 const XC2C64_MACROCELL_PERMUTE: [Coordinate; 27] = [
@@ -157,7 +158,7 @@ const BIG_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
     Coordinate::new(0, 1),
     Coordinate::new(1, 1),
 ];
-const BIG_MC_STARTING_ROW: [usize; 16] =
+const BIG_MC_STARTING_ROW: [usize; MCS_PER_FB] =
     [0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38];
 
 const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
@@ -165,7 +166,7 @@ const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
     36, 38, 39,
 ];
 #[rustfmt::skip]
-const NOGAP_AND_TERM_PERMUTE: [usize; 56] = [
+const NOGAP_AND_TERM_PERMUTE: [usize; ANDTERMS_PER_FB] = [
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     14, 15, 16,
     20, 21, 22,
@@ -1138,7 +1139,7 @@ impl JedecCompat for XC2Device {
 
     fn _is_zia(&self, jed_idx: usize) -> Option<(usize, usize)> {
         if let Some((fb, offs)) = self._is_fb(jed_idx) {
-            if offs < self.zia_width() * 40 {
+            if offs < self.zia_width() * ZIA_ROWS {
                 Some((fb, offs))
             } else {
                 None
@@ -1150,8 +1151,10 @@ impl JedecCompat for XC2Device {
 
     fn _is_and(&self, jed_idx: usize) -> Option<(usize, usize)> {
         if let Some((fb, offs)) = self._is_fb(jed_idx) {
-            if offs >= self.zia_width() * 40 && offs < self.zia_width() * 40 + 80 * 56 {
-                Some((fb, offs - self.zia_width() * 40))
+            if offs >= self.zia_width() * ZIA_ROWS
+                && offs < self.zia_width() * ZIA_ROWS + ZIA_ROWS * 2 * ANDTERMS_PER_FB
+            {
+                Some((fb, offs - self.zia_width() * ZIA_ROWS))
             } else {
                 None
             }
@@ -1162,10 +1165,16 @@ impl JedecCompat for XC2Device {
 
     fn _is_or(&self, jed_idx: usize) -> Option<(usize, usize)> {
         if let Some((fb, offs)) = self._is_fb(jed_idx) {
-            if offs >= self.zia_width() * 40 + 80 * 56
-                && offs < self.zia_width() * 40 + 80 * 56 + 16 * 56
+            if offs >= self.zia_width() * ZIA_ROWS + ZIA_ROWS * 2 * ANDTERMS_PER_FB
+                && offs
+                    < self.zia_width() * ZIA_ROWS
+                        + ZIA_ROWS * 2 * ANDTERMS_PER_FB
+                        + MCS_PER_FB * ANDTERMS_PER_FB
             {
-                Some((fb, offs - self.zia_width() * 40 - 80 * 56))
+                Some((
+                    fb,
+                    offs - self.zia_width() * ZIA_ROWS - ZIA_ROWS * 2 * ANDTERMS_PER_FB,
+                ))
             } else {
                 None
             }
@@ -1176,8 +1185,17 @@ impl JedecCompat for XC2Device {
 
     fn _is_mc(&self, jed_idx: usize) -> Option<(usize, usize)> {
         if let Some((fb, offs)) = self._is_fb(jed_idx) {
-            if offs >= self.zia_width() * 40 + 80 * 56 + 16 * 56 {
-                Some((fb, offs - self.zia_width() * 40 - 80 * 56 - 16 * 56))
+            if offs
+                >= self.zia_width() * ZIA_ROWS
+                    + ZIA_ROWS * 2 * ANDTERMS_PER_FB
+                    + MCS_PER_FB * ANDTERMS_PER_FB
+            {
+                Some((
+                    fb,
+                    offs - self.zia_width() * ZIA_ROWS
+                        - ZIA_ROWS * 2 * ANDTERMS_PER_FB
+                        - MCS_PER_FB * ANDTERMS_PER_FB,
+                ))
             } else {
                 None
             }
@@ -1295,7 +1313,7 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
         let mut linebreaks = std::vec::Vec::new();
         let mut fuse_idx = 0;
         for fb in 0..self.part.device.num_fbs() {
-            for _zia_row in 0..40 {
+            for _zia_row in 0..ZIA_ROWS {
                 if fuse_idx != 0 {
                     linebreaks.push(fuse_idx);
                 }
@@ -1303,19 +1321,19 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
             }
             linebreaks.push(fuse_idx);
 
-            for _and_row in 0..56 {
+            for _and_row in 0..ANDTERMS_PER_FB {
                 linebreaks.push(fuse_idx);
-                fuse_idx += 80;
+                fuse_idx += ZIA_ROWS * 2;
             }
             linebreaks.push(fuse_idx);
 
-            for _or_row in 0..56 {
+            for _or_row in 0..ANDTERMS_PER_FB {
                 linebreaks.push(fuse_idx);
-                fuse_idx += 16;
+                fuse_idx += MCS_PER_FB;
             }
             linebreaks.push(fuse_idx);
 
-            for mc in 0..16 {
+            for mc in 0..MCS_PER_FB {
                 linebreaks.push(fuse_idx);
                 fuse_idx += match self.part.device {
                     XC2Device::XC2C32
@@ -1326,7 +1344,7 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
                     | XC2Device::XC2C256
                     | XC2Device::XC2C384
                     | XC2Device::XC2C512 => {
-                        if self.part.device.has_io_at(fb as u8, mc) {
+                        if self.part.device.has_io_at(fb as u8, mc as u8) {
                             29
                         } else {
                             16
