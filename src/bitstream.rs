@@ -1,9 +1,12 @@
 //! Top-level bitstream functions
 
-use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
+use bittwiddler_core::prelude::{
+    BitArray as BittwiddlerBitArray, Coordinate, HumanLevelThatHasState, HumanSinkForStatePieces,
+};
+use bittwiddler_macros::bittwiddler_properties;
 use bitvec::prelude::*;
 
-use crate::{global_fuses::GlobalFuses, partdb::XC2Part};
+use crate::{global_bits_code::GCK, global_fuses::GlobalFuses, partdb::XC2Part};
 
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
@@ -79,6 +82,29 @@ impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {
     fn set(&mut self, c: Coordinate, val: bool) {
         let (fuse_dims_w, _) = self.part.device.fuse_array_dims();
         BitHolder::set(&mut self.bits, c.y * fuse_dims_w + c.x, val)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<B: BitHolder> HumanLevelThatHasState for Coolrunner2<B> {
+    fn _human_dump_my_state(&self, _dump: &mut dyn HumanSinkForStatePieces) {}
+}
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
+#[allow(private_bounds)]
+impl<B: BitHolder> Coolrunner2<B> {
+    #[bittwiddler::property]
+    pub fn gck_enabled(&self, gck_idx: u8) -> GCK {
+        assert!(gck_idx < 3);
+        GCK {
+            device: self.part.device,
+            gck_idx,
+        }
+    }
+}
+#[cfg(feature = "alloc")]
+impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
+    fn _automagic_construct_all_gck_enabled(&self) -> impl Iterator<Item = GCK> {
+        (0..3).map(|gck_idx| self.gck_enabled(gck_idx))
     }
 }
 
