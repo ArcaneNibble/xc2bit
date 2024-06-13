@@ -11,50 +11,22 @@ pub struct GCKEn {
     pub(crate) device: XC2Device,
     pub(crate) gck_idx: u8,
 }
-impl PropertyAccessor for GCKEn {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.device.gck()[self.gck_idx as usize], false)
-    }
-}
-impl PropertyAccessorWithDefault for GCKEn {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for GCKEn {}
+crate::bitstream::single_bool_impl!(GCKEn, self, {
+    (self.device.gck()[self.gck_idx as usize], false)
+});
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct GSREn {
     #[bittwiddler::skip]
     pub(crate) device: XC2Device,
 }
-impl PropertyAccessor for GSREn {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.device.gsr_enable(), false)
-    }
-}
-impl PropertyAccessorWithDefault for GSREn {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for GSREn {}
+crate::bitstream::single_bool_impl!(GSREn, self, { (self.device.gsr_enable(), false) });
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct GSRInv {
     #[bittwiddler::skip]
     pub(crate) device: XC2Device,
 }
-impl PropertyAccessor for GSRInv {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.device.gsr_invert(), false)
-    }
-}
-impl PropertyAccessorWithDefault for GSRInv {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for GSRInv {}
+crate::bitstream::single_bool_impl!(GSRInv, self, { (self.device.gsr_invert(), false) });
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct GTSEn {
@@ -62,39 +34,27 @@ pub struct GTSEn {
     pub(crate) device: XC2Device,
     pub(crate) gts_idx: u8,
 }
-impl PropertyAccessor for GTSEn {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.device.gts_enable()[self.gts_idx as usize], true)
-    }
-}
-impl PropertyAccessorWithDefault for GTSEn {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for GTSEn {}
+crate::bitstream::single_bool_impl!(GTSEn, self, {
+    (self.device.gts_enable()[self.gts_idx as usize], true)
+});
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct GTSInv {
     #[bittwiddler::skip]
     pub(crate) device: XC2Device,
     pub(crate) gts_idx: u8,
 }
-impl PropertyAccessor for GTSInv {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.device.gts_invert()[self.gts_idx as usize], false)
-    }
-}
+crate::bitstream::single_bool_impl!(
+    GTSInv,
+    self,
+    { (self.device.gts_invert()[self.gts_idx as usize], false) },
+    nodefault
+);
 impl PropertyAccessorWithDefault for GTSInv {
     fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
         let val = self.get(bitstream);
         val == true
     }
 }
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for GTSInv {}
 
 include!(concat!(env!("OUT_DIR"), "/global-term.rs"));
 
@@ -143,33 +103,15 @@ impl ClockDivider {
 pub struct ClkDivEnable {
     x: ClockDivider,
 }
-impl PropertyAccessor for ClkDivEnable {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.x.device.clk_div_enable(), true)
-    }
-}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for ClkDivEnable {}
-impl PropertyAccessorWithDefault for ClkDivEnable {}
+crate::bitstream::single_bool_impl!(ClkDivEnable, self, {
+    (self.x.device.clk_div_enable(), true)
+});
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct ClkDivDelay {
     x: ClockDivider,
 }
-impl PropertyAccessor for ClkDivDelay {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (self.x.device.clk_div_delay(), true)
-    }
-}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for ClkDivDelay {}
-impl PropertyAccessorWithDefault for ClkDivDelay {}
+crate::bitstream::single_bool_impl!(ClkDivDelay, self, { (self.x.device.clk_div_delay(), true) });
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct ClkDivRatioAccessor {

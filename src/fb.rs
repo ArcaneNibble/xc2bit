@@ -94,26 +94,18 @@ pub struct TrueInput {
     pub(crate) x: AndTerm,
     pub(crate) zia_row: u8,
 }
-impl PropertyAccessor for TrueInput {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (
-            and_get_bit_pos(
-                self.x.x.device,
-                self.x.x.fb,
-                self.x.pterm_i,
-                self.zia_row,
-                false,
-            ),
-            true,
-        )
-    }
-}
-impl PropertyAccessorWithDefault for TrueInput {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for TrueInput {}
+crate::bitstream::single_bool_impl!(TrueInput, self, {
+    (
+        and_get_bit_pos(
+            self.x.x.device,
+            self.x.x.fb,
+            self.x.pterm_i,
+            self.zia_row,
+            false,
+        ),
+        true,
+    )
+});
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -121,26 +113,18 @@ pub struct CompInput {
     pub(crate) x: AndTerm,
     pub(crate) zia_row: u8,
 }
-impl PropertyAccessor for CompInput {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (
-            and_get_bit_pos(
-                self.x.x.device,
-                self.x.x.fb,
-                self.x.pterm_i,
-                self.zia_row,
-                true,
-            ),
+crate::bitstream::single_bool_impl!(CompInput, self, {
+    (
+        and_get_bit_pos(
+            self.x.x.device,
+            self.x.x.fb,
+            self.x.pterm_i,
+            self.zia_row,
             true,
-        )
-    }
-}
-impl PropertyAccessorWithDefault for CompInput {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for CompInput {}
+        ),
+        true,
+    )
+});
 
 #[rustfmt::skip]
 const NOGAP_AND_TERM_PERMUTE: [usize; ANDTERMS_PER_FB] = [
@@ -232,64 +216,55 @@ pub struct OrInput {
     pub(crate) x: OrTerm,
     pub(crate) pterm_i: u8,
 }
-impl PropertyAccessor for OrInput {
-    type BoolArray = [bool; 1];
-    type Output = bool;
+crate::bitstream::single_bool_impl!(OrInput, self, {
+    (
+        {
+            let device = self.x.x.device;
+            let fb = self.x.x.fb;
+            let mc = self.x.mc;
+            let pterm_i = self.pterm_i;
+            match device {
+                XC2Device::XC2C32
+                | XC2Device::XC2C32A
+                | XC2Device::XC2C64
+                | XC2Device::XC2C64A
+                | XC2Device::XC2C256 => {
+                    let x_base = mc as usize % 2 + pterm_i as usize * 2;
+                    let y_base = 20 + mc as usize / 2;
 
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (
-            {
-                let device = self.x.x.device;
-                let fb = self.x.x.fb;
-                let mc = self.x.mc;
-                let pterm_i = self.pterm_i;
-                match device {
-                    XC2Device::XC2C32
-                    | XC2Device::XC2C32A
-                    | XC2Device::XC2C64
-                    | XC2Device::XC2C64A
-                    | XC2Device::XC2C256 => {
-                        let x_base = mc as usize % 2 + pterm_i as usize * 2;
-                        let y_base = 20 + mc as usize / 2;
+                    let mc_offset = if device == XC2Device::XC2C256 { 10 } else { 9 };
 
-                        let mc_offset = if device == XC2Device::XC2C256 { 10 } else { 9 };
-
-                        if fb % 2 == 0 {
-                            device.fb_corner(fb as u8)
-                                + Coordinate::new(mc_offset, 0)
-                                + Coordinate::new(x_base, y_base)
-                        } else {
-                            device.fb_corner(fb as u8).sub_x_add_y(
-                                Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
-                            )
-                        }
-                    }
-                    XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-                        let y_base = SIDE_OR_ROW_PERMUTE[pterm_i as usize / 2];
-                        let x_base = mc as usize * 2
-                            + if y_base >= 23 {
-                                1 - pterm_i as usize % 2
-                            } else {
-                                pterm_i as usize % 2
-                            };
-
-                        if fb % 2 == 0 {
-                            device.fb_corner(fb as u8)
-                                + Coordinate::new(15, 0)
-                                + Coordinate::new(x_base, y_base)
-                        } else {
-                            device.fb_corner(fb as u8).sub_x_add_y(
-                                Coordinate::new(15, 0) + Coordinate::new(x_base, y_base),
-                            )
-                        }
+                    if fb % 2 == 0 {
+                        device.fb_corner(fb as u8)
+                            + Coordinate::new(mc_offset, 0)
+                            + Coordinate::new(x_base, y_base)
+                    } else {
+                        device.fb_corner(fb as u8).sub_x_add_y(
+                            Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
+                        )
                     }
                 }
-            },
-            true,
-        )
-    }
-}
+                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
+                    let y_base = SIDE_OR_ROW_PERMUTE[pterm_i as usize / 2];
+                    let x_base = mc as usize * 2
+                        + if y_base >= 23 {
+                            1 - pterm_i as usize % 2
+                        } else {
+                            pterm_i as usize % 2
+                        };
 
-impl PropertyAccessorWithDefault for OrInput {}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for OrInput {}
+                    if fb % 2 == 0 {
+                        device.fb_corner(fb as u8)
+                            + Coordinate::new(15, 0)
+                            + Coordinate::new(x_base, y_base)
+                    } else {
+                        device
+                            .fb_corner(fb as u8)
+                            .sub_x_add_y(Coordinate::new(15, 0) + Coordinate::new(x_base, y_base))
+                    }
+                }
+            }
+        },
+        true,
+    )
+});

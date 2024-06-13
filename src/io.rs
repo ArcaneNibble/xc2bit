@@ -118,46 +118,38 @@ mc::declare_accessor!(SlewAccessor, 1, SlewRate, SLEW_RATE);
 pub struct SchmittTriggerAccessor {
     x: Macrocell,
 }
-impl PropertyAccessor for SchmittTriggerAccessor {
-    type BoolArray = [bool; 1];
-    type Output = bool;
+crate::bitstream::single_bool_impl!(SchmittTriggerAccessor, self, {
+    let device = self.x.x.device;
+    let fb = self.x.x.fb;
 
-    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
-        let device = self.x.x.device;
-        let fb = self.x.x.fb;
-
-        match device {
-            XC2Device::XC2C32 | XC2Device::XC2C32A => (
-                {
-                    let c = Coordinate::new(0, self.x.mc as usize * xc2c32a_macrocell::H)
-                        + xc2c32a_macrocell::SCHMITT_TRIGGER[biti];
-                    if fb % 2 == 0 {
-                        device.fb_corner(fb) + c
-                    } else {
-                        device.fb_corner(fb).sub_x_add_y(c)
-                    }
-                },
-                false,
-            ),
-            XC2Device::XC2C64 | XC2Device::XC2C64A => (
-                {
-                    let c = Coordinate::new(0, self.x.mc as usize * xc2c64a_macrocell::H)
-                        + xc2c64a_macrocell::SCHMITT_TRIGGER[biti];
-                    if fb % 2 == 0 {
-                        device.fb_corner(fb) + c
-                    } else {
-                        device.fb_corner(fb).sub_x_add_y(c)
-                    }
-                },
-                false,
-            ),
-            _ => unreachable!(),
-        }
+    match device {
+        XC2Device::XC2C32 | XC2Device::XC2C32A => (
+            {
+                let c = Coordinate::new(0, self.x.mc as usize * xc2c32a_macrocell::H)
+                    + xc2c32a_macrocell::SCHMITT_TRIGGER[0];
+                if fb % 2 == 0 {
+                    device.fb_corner(fb) + c
+                } else {
+                    device.fb_corner(fb).sub_x_add_y(c)
+                }
+            },
+            false,
+        ),
+        XC2Device::XC2C64 | XC2Device::XC2C64A => (
+            {
+                let c = Coordinate::new(0, self.x.mc as usize * xc2c64a_macrocell::H)
+                    + xc2c64a_macrocell::SCHMITT_TRIGGER[0];
+                if fb % 2 == 0 {
+                    device.fb_corner(fb) + c
+                } else {
+                    device.fb_corner(fb).sub_x_add_y(c)
+                }
+            },
+            false,
+        ),
+        _ => unreachable!(),
     }
-}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for SchmittTriggerAccessor {}
-impl PropertyAccessorWithDefault for SchmittTriggerAccessor {}
+});
 
 macro_rules! declare_accessor_big_only {
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident) => {
@@ -289,28 +281,12 @@ impl ExtraDedicatedInput {
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct ExtraSchmittTriggerAccessor {}
-impl PropertyAccessor for ExtraSchmittTriggerAccessor {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, false)
-    }
-}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for ExtraSchmittTriggerAccessor {}
-impl PropertyAccessorWithDefault for ExtraSchmittTriggerAccessor {}
+crate::bitstream::single_bool_impl!(ExtraSchmittTriggerAccessor, self, {
+    (XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, false)
+});
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 pub struct ExtraTerminationAccessor {}
-impl PropertyAccessor for ExtraTerminationAccessor {
-    type BoolArray = [bool; 1];
-    type Output = bool;
-
-    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
-        (XC2C32_EXTRA_IBUF_TERMINATION, false)
-    }
-}
-#[cfg(feature = "alloc")]
-impl PropertyAccessorWithStringConv for ExtraTerminationAccessor {}
-impl PropertyAccessorWithDefault for ExtraTerminationAccessor {}
+crate::bitstream::single_bool_impl!(ExtraTerminationAccessor, self, {
+    (XC2C32_EXTRA_IBUF_TERMINATION, false)
+});

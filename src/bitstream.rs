@@ -204,6 +204,26 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     }
 }
 
+macro_rules! single_bool_impl {
+    ($name:ident, $self:ident, $get:block) => {
+        crate::bitstream::single_bool_impl!($name, $self, $get, nodefault);
+        impl PropertyAccessorWithDefault for $name {}
+    };
+    ($name:ident, $self:ident, $get:block, nodefault) => {
+        impl PropertyAccessor for $name {
+            type BoolArray = [bool; 1];
+            type Output = bool;
+
+            fn get_bit_pos(&$self, _biti: usize) -> (Coordinate, bool) {
+                $get
+            }
+        }
+        #[cfg(feature = "alloc")]
+        impl PropertyAccessorWithStringConv for $name {}
+    };
+}
+pub(crate) use single_bool_impl;
+
 #[cfg(test)]
 mod tests {
     use super::*;
