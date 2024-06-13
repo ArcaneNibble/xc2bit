@@ -128,3 +128,19 @@ impl PropertyAccessor for ClkDivRatioAccessor {
 #[cfg(feature = "alloc")]
 impl PropertyAccessorWithStringConv for ClkDivRatioAccessor {}
 impl PropertyAccessorWithDefault for ClkDivRatioAccessor {}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct DataGate {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+crate::bitstream::single_bool_impl!(DataGate, self, { (self.device.data_gate(), true) });
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct UseVref {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+crate::bitstream::single_bool_impl!(UseVref, self, { (self.device.data_gate(), true) });

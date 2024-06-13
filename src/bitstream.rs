@@ -8,7 +8,9 @@ use bitvec::prelude::*;
 
 use crate::{
     fb::FunctionBlock,
-    global_bits_code::{ClockDivider, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor},
+    global_bits_code::{
+        ClockDivider, DataGate, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor, UseVref,
+    },
     global_fuses::GlobalFuses,
     io::ExtraDedicatedInput,
     partdb::{XC2Device, XC2Part},
@@ -171,6 +173,22 @@ impl<B: BitHolder> Coolrunner2<B> {
             device: self.part.device,
         }
     }
+
+    #[bittwiddler::property]
+    #[bittwiddler::conditional]
+    pub fn data_gate_enabled(&self) -> DataGate {
+        DataGate {
+            device: self.part.device,
+        }
+    }
+
+    #[bittwiddler::property]
+    #[bittwiddler::conditional]
+    pub fn use_vref(&self) -> UseVref {
+        UseVref {
+            device: self.part.device,
+        }
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -197,6 +215,20 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     }
     fn _automagic_construct_all_clock_divider(&self) -> impl Iterator<Item = ClockDivider> {
         let mut x = [self.clock_divider()].into_iter();
+        if !self.part.device.has_large_macrocells() {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_data_gate_enabled(&self) -> impl Iterator<Item = DataGate> {
+        let mut x = [self.data_gate_enabled()].into_iter();
+        if !self.part.device.has_large_macrocells() {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_use_vref(&self) -> impl Iterator<Item = UseVref> {
+        let mut x = [self.use_vref()].into_iter();
         if !self.part.device.has_large_macrocells() {
             x.next();
         }
