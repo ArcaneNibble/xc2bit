@@ -5,50 +5,19 @@ extern crate std;
 
 use core::fmt::Display;
 
-use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate};
+use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate, PropertyAccessor};
 use bitvec::prelude::*;
 use jedec::*;
 
 use crate::{
     bitstream::{BitHolder, Coolrunner2},
-    fb::{and_get_bit_pos, or_get_bit_pos},
+    fb::{and_get_bit_pos, or_get_bit_pos, FunctionBlock},
     global_fuses::*,
+    io::IoPad,
+    mc::Macrocell,
     partdb::{XC2Device, XC2Part},
     ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
 };
-
-const XC2C64_MACROCELL_PERMUTE: [Coordinate; 27] = [
-    // row 0
-    Coordinate::new(8, 0),
-    Coordinate::new(7, 0),
-    Coordinate::new(5, 0),
-    Coordinate::new(6, 0),
-    Coordinate::new(4, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-    Coordinate::new(0, 0),
-    Coordinate::new(1, 0),
-    // row 1 (mostly)
-    Coordinate::new(7, 1),
-    Coordinate::new(8, 1),
-    Coordinate::new(5, 1),
-    Coordinate::new(6, 1),
-    Coordinate::new(3, 1),
-    Coordinate::new(4, 1),
-    Coordinate::new(2, 1),
-    Coordinate::new(1, 1),
-    Coordinate::new(7, 2),
-    // row 2 (mostly)
-    Coordinate::new(8, 2),
-    Coordinate::new(0, 1),
-    Coordinate::new(3, 2),
-    Coordinate::new(4, 2),
-    Coordinate::new(5, 2),
-    Coordinate::new(6, 2),
-    Coordinate::new(2, 2),
-    Coordinate::new(1, 2),
-    Coordinate::new(0, 2),
-];
 
 const XC2C256_MC_WITH_IO_PERMUTE: [Coordinate; 29] = [
     // row 1
@@ -225,40 +194,124 @@ impl JedecCompat for XC2Device {
     fn jed_index_to_crbit(&self, jed_idx: usize) -> Coordinate {
         if let Some((fb, offs)) = self._is_mc(jed_idx) {
             match self {
-                XC2Device::XC2C32 | XC2Device::XC2C32A => {
-                    let x = offs % 9;
-                    let y = offs / 9;
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8) + Coordinate::new(x, y)
-                    } else {
-                        self.fb_corner(fb as u8).sub_x_add_y(Coordinate::new(x, y))
-                    }
-                }
-                XC2Device::XC2C64 | XC2Device::XC2C64A => {
+                XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
                     let mc = offs / 27;
-                    let mc_offs = offs % 27;
-                    let permute_c = XC2C64_MACROCELL_PERMUTE[mc_offs];
+                    let a_mc = Macrocell {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        mc: mc as u8,
+                    };
+                    let a_io = IoPad {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        mc: mc as u8,
+                    };
 
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8) + Coordinate::new(0, mc * 3) + permute_c
-                    } else {
-                        self.fb_corner(fb as u8)
-                            .sub_x_add_y(Coordinate::new(0, mc * 3) + permute_c)
+                    match offs % 27 {
+                        0 => a_mc.clk_src().get_bit_pos(0).0,
+                        1 => a_mc.clk_inv().get_bit_pos(0).0,
+                        2 => a_mc.clk_src().get_bit_pos(1).0,
+                        3 => a_mc.clk_src().get_bit_pos(2).0,
+                        4 => a_mc.is_ddr().get_bit_pos(0).0,
+                        5 => a_mc.r_src().get_bit_pos(0).0,
+                        6 => a_mc.r_src().get_bit_pos(1).0,
+                        7 => a_mc.s_src().get_bit_pos(0).0,
+                        8 => a_mc.s_src().get_bit_pos(1).0,
+                        9 => a_mc.ff_mode().get_bit_pos(0).0,
+                        10 => a_mc.ff_mode().get_bit_pos(1).0,
+                        11 => a_io.fb_src().get_bit_pos(0).0,
+                        12 => a_io.fb_src().get_bit_pos(1).0,
+                        13 => a_mc.fb_src().get_bit_pos(0).0,
+                        14 => a_mc.fb_src().get_bit_pos(1).0,
+                        15 => a_mc.use_iob().get_bit_pos(0).0,
+                        16 => a_io.schmitt_trigger().get_bit_pos(0).0,
+                        17 => a_mc.xor_mode().get_bit_pos(0).0,
+                        18 => a_mc.xor_mode().get_bit_pos(1).0,
+                        19 => a_io.output_src().get_bit_pos(0).0,
+                        20 => a_io.output_pad_mode().get_bit_pos(0).0,
+                        21 => a_io.output_pad_mode().get_bit_pos(1).0,
+                        22 => a_io.output_pad_mode().get_bit_pos(2).0,
+                        23 => a_io.output_pad_mode().get_bit_pos(3).0,
+                        24 => a_io.termination_enabled().get_bit_pos(0).0,
+                        25 => a_io.slew_rate().get_bit_pos(0).0,
+                        26 => a_mc.init_state().get_bit_pos(0).0,
+                        _ => unreachable!(),
                     }
                 }
                 XC2Device::XC2C256 => {
                     let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
-                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
-                        XC2C256_MC_WITH_IO_PERMUTE[mc_offs]
-                    } else {
-                        XC2C256_MC_NO_IO_PERMUTE[mc_offs]
+                    let a_mc = Macrocell {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        mc: mc as u8,
+                    };
+                    let a_io = IoPad {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        mc: mc as u8,
                     };
 
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8) + Coordinate::new(0, mc * 3) + permute_c
+                    if self.has_io_at(fb as u8, mc as u8) {
+                        match mc_offs {
+                            0 => a_mc.clk_src().get_bit_pos(0).0,
+                            1 => a_mc.clk_src().get_bit_pos(1).0,
+                            2 => a_mc.clk_src().get_bit_pos(2).0,
+                            3 => a_mc.is_ddr().get_bit_pos(0).0,
+                            4 => a_mc.clk_inv().get_bit_pos(0).0,
+                            5 => a_io.use_data_gate().get_bit_pos(0).0,
+                            6 => a_mc.fb_src().get_bit_pos(0).0,
+                            7 => a_mc.fb_src().get_bit_pos(1).0,
+                            8 => a_io.input_pad_mode().get_bit_pos(0).0,
+                            9 => a_io.input_pad_mode().get_bit_pos(1).0,
+                            10 => a_mc.use_iob().get_bit_pos(0).0,
+                            11 => a_io.fb_src().get_bit_pos(0).0,
+                            12 => a_io.fb_src().get_bit_pos(1).0,
+                            13 => a_io.output_pad_mode().get_bit_pos(0).0,
+                            14 => a_io.output_pad_mode().get_bit_pos(1).0,
+                            15 => a_io.output_pad_mode().get_bit_pos(2).0,
+                            16 => a_io.output_pad_mode().get_bit_pos(3).0,
+                            17 => a_mc.s_src().get_bit_pos(0).0,
+                            18 => a_mc.s_src().get_bit_pos(1).0,
+                            19 => a_mc.init_state().get_bit_pos(0).0,
+                            20 => a_io.output_src().get_bit_pos(0).0,
+                            21 => a_mc.ff_mode().get_bit_pos(0).0,
+                            22 => a_mc.ff_mode().get_bit_pos(1).0,
+                            23 => a_mc.r_src().get_bit_pos(0).0,
+                            24 => a_mc.r_src().get_bit_pos(1).0,
+                            25 => a_io.slew_rate().get_bit_pos(0).0,
+                            26 => a_io.termination_enabled().get_bit_pos(0).0,
+                            27 => a_mc.xor_mode().get_bit_pos(0).0,
+                            28 => a_mc.xor_mode().get_bit_pos(1).0,
+                            _ => unreachable!(),
+                        }
                     } else {
-                        self.fb_corner(fb as u8)
-                            .sub_x_add_y(Coordinate::new(0, mc * 3) + permute_c)
+                        match mc_offs {
+                            0 => a_mc.clk_src().get_bit_pos(0).0,
+                            1 => a_mc.clk_src().get_bit_pos(1).0,
+                            2 => a_mc.clk_src().get_bit_pos(2).0,
+                            3 => a_mc.is_ddr().get_bit_pos(0).0,
+                            4 => a_mc.clk_inv().get_bit_pos(0).0,
+                            5 => a_mc.fb_src().get_bit_pos(0).0,
+                            6 => a_mc.fb_src().get_bit_pos(1).0,
+                            7 => a_mc.s_src().get_bit_pos(0).0,
+                            8 => a_mc.s_src().get_bit_pos(1).0,
+                            9 => a_mc.init_state().get_bit_pos(0).0,
+                            10 => a_mc.ff_mode().get_bit_pos(0).0,
+                            11 => a_mc.ff_mode().get_bit_pos(1).0,
+                            12 => a_mc.r_src().get_bit_pos(0).0,
+                            13 => a_mc.r_src().get_bit_pos(1).0,
+                            14 => a_mc.xor_mode().get_bit_pos(0).0,
+                            15 => a_mc.xor_mode().get_bit_pos(1).0,
+                            _ => unreachable!(),
+                        }
                     }
                 }
                 XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {

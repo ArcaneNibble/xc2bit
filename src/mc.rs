@@ -3,7 +3,11 @@
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
 
-use crate::{fb::FunctionBlock, partdb::XC2Device, spreadsheet_magic::xc2c32a_macrocell};
+use crate::{
+    fb::FunctionBlock,
+    partdb::XC2Device,
+    spreadsheet_magic::{xc2c256_macrocell, xc2c32a_macrocell, xc2c64a_macrocell},
+};
 
 include!(concat!(env!("OUT_DIR"), "/mc-clk-src.rs"));
 include!(concat!(env!("OUT_DIR"), "/mc-fb.rs"));
@@ -67,7 +71,7 @@ macro_rules! declare_accessor {
         crate::mc::declare_accessor!($name, $nbits, $out, false, $spreadsheet);
     };
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident, nodefault) => {
-        rate::mc::declare_accessor!($name, $nbits, $out, false, $spreadsheet, nodefault);
+        crate::mc::declare_accessor!($name, $nbits, $out, false, $spreadsheet, nodefault);
     };
     ($name:ident, $nbits:expr, $out:ident, $invert:expr, $spreadsheet:ident) => {
         crate::mc::declare_accessor!($name, $nbits, $out, $invert, $spreadsheet, nodefault);
@@ -99,9 +103,31 @@ macro_rules! declare_accessor {
                         },
                         $invert,
                     ),
-                    XC2Device::XC2C64 | XC2Device::XC2C64A => todo!(),
+                    XC2Device::XC2C64 | XC2Device::XC2C64A => (
+                        {
+                            let c = Coordinate::new(0, self.x.mc as usize * xc2c64a_macrocell::H)
+                                + xc2c64a_macrocell::$spreadsheet[biti];
+                            if fb % 2 == 0 {
+                                device.fb_corner(fb) + c
+                            } else {
+                                device.fb_corner(fb).sub_x_add_y(c)
+                            }
+                        },
+                        $invert,
+                    ),
+                    XC2Device::XC2C256 => (
+                        {
+                            let c = Coordinate::new(0, self.x.mc as usize * xc2c256_macrocell::H)
+                                + xc2c256_macrocell::$spreadsheet[biti];
+                            if fb % 2 == 0 {
+                                device.fb_corner(fb) + c
+                            } else {
+                                device.fb_corner(fb).sub_x_add_y(c)
+                            }
+                        },
+                        $invert,
+                    ),
                     XC2Device::XC2C128 => todo!(),
-                    XC2Device::XC2C256 => todo!(),
                     XC2Device::XC2C384 => todo!(),
                     XC2Device::XC2C512 => todo!(),
                 }

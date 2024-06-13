@@ -1,0 +1,6 @@
+/// Input mode selection on larger parts with VREF
+InputBufMode
+00      NoVrefNoSt      This input buffer is not using VREF, and it is also not using the Schmitt trigger
+11      *NoVrefSt       This input buffer is not using VREF, but it is using the Schmitt trigger
+10      UsesVref        This input buffer is using VREF (supposedly it always has the Schmitt trigger?)
+01      IsVref          This input pin is serving as VREF
