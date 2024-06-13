@@ -31,6 +31,7 @@ impl FunctionBlock {
     }
     pub fn io(&self, mc: u8) -> IoPad {
         assert!((mc as usize) < MCS_PER_FB);
+        assert!(self.device.has_io_at(self.fb, mc));
         IoPad { x: *self, mc }
     }
     #[bittwiddler::property]
@@ -51,7 +52,9 @@ impl FunctionBlockAutomagicRequiredFunctions for FunctionBlock {
         (0..MCS_PER_FB).map(|mc| self.mc(mc as u8))
     }
     fn _automagic_construct_all_io(&self) -> impl Iterator<Item = IoPad> {
-        (0..MCS_PER_FB).map(|mc| self.io(mc as u8))
+        (0..MCS_PER_FB)
+            .filter(|mc| self.device.has_io_at(self.fb, *mc as u8))
+            .map(|mc| self.io(mc as u8))
     }
     fn _automagic_construct_all_zia_row(&self) -> impl Iterator<Item = ZIARowAccessor> {
         (0..ZIA_ROWS).map(|zia_row| self.zia_row(zia_row as u8))

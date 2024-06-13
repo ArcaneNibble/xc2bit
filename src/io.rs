@@ -97,23 +97,10 @@ mc::declare_accessor!(
     IoFeedbackSourceAccessor,
     2,
     IoFeedbackSource,
-    IO_FEEDBACK_SRC,
-    nodefault
+    IO_FEEDBACK_SRC
 );
-mc::declare_accessor!(
-    OutputSourceAccessor,
-    1,
-    PinOutputSrc,
-    REG_OR_COMB,
-    nodefault
-);
-mc::declare_accessor!(
-    OutputModeAccessor,
-    4,
-    OutputMode,
-    OUTPUT_BUF_MODE,
-    nodefault
-);
+mc::declare_accessor!(OutputSourceAccessor, 1, PinOutputSrc, REG_OR_COMB);
+mc::declare_accessor!(OutputModeAccessor, 4, OutputMode, OUTPUT_BUF_MODE);
 mc::declare_accessor!(TerminationAccessor, 1, bool, TERMINATION_ENABLED);
 mc::declare_accessor!(SlewAccessor, 1, SlewRate, SLEW_RATE);
 
@@ -121,51 +108,55 @@ mc::declare_accessor!(SlewAccessor, 1, SlewRate, SLEW_RATE);
 pub struct SchmittTriggerAccessor {
     x: Macrocell,
 }
-crate::bitstream::single_bool_impl!(SchmittTriggerAccessor, self, {
-    let device = self.x.x.device;
-    let fb = self.x.x.fb;
+crate::bitstream::single_bool_impl!(
+    SchmittTriggerAccessor,
+    self,
+    {
+        let device = self.x.x.device;
+        let fb = self.x.x.fb;
 
-    match device {
-        XC2Device::XC2C32 | XC2Device::XC2C32A => (
-            {
-                let c = Coordinate::new(0, self.x.mc as usize * xc2c32a_macrocell::H)
-                    + xc2c32a_macrocell::SCHMITT_TRIGGER[0];
-                if fb % 2 == 0 {
-                    device.fb_corner(fb) + c
-                } else {
-                    device.fb_corner(fb).sub_x_add_y(c)
-                }
-            },
-            false,
-        ),
-        XC2Device::XC2C64 | XC2Device::XC2C64A => (
-            {
-                let c = Coordinate::new(0, self.x.mc as usize * xc2c64a_macrocell::H)
-                    + xc2c64a_macrocell::SCHMITT_TRIGGER[0];
-                if fb % 2 == 0 {
-                    device.fb_corner(fb) + c
-                } else {
-                    device.fb_corner(fb).sub_x_add_y(c)
-                }
-            },
-            false,
-        ),
-        _ => unreachable!(),
+        match device {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => (
+                {
+                    let c = Coordinate::new(0, self.x.mc as usize * xc2c32a_macrocell::H)
+                        + xc2c32a_macrocell::SCHMITT_TRIGGER[0];
+                    if fb % 2 == 0 {
+                        device.fb_corner(fb) + c
+                    } else {
+                        device.fb_corner(fb).sub_x_add_y(c)
+                    }
+                },
+                false,
+            ),
+            XC2Device::XC2C64 | XC2Device::XC2C64A => (
+                {
+                    let c = Coordinate::new(0, self.x.mc as usize * xc2c64a_macrocell::H)
+                        + xc2c64a_macrocell::SCHMITT_TRIGGER[0];
+                    if fb % 2 == 0 {
+                        device.fb_corner(fb) + c
+                    } else {
+                        device.fb_corner(fb).sub_x_add_y(c)
+                    }
+                },
+                false,
+            ),
+            _ => unreachable!(),
+        }
+    },
+    nodefault
+);
+impl PropertyAccessorWithDefault for SchmittTriggerAccessor {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        val == true
     }
-});
+}
 
 macro_rules! declare_accessor_big_only {
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident) => {
         declare_accessor_big_only!($name, $nbits, $out, false, $spreadsheet);
     };
-    ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident, nodefault) => {
-        declare_accessor_big_only!($name, $nbits, $out, false, $spreadsheet, nodefault);
-    };
     ($name:ident, $nbits:expr, $out:ident, $invert:expr, $spreadsheet:ident) => {
-        declare_accessor_big_only!($name, $nbits, $out, $invert, $spreadsheet, nodefault);
-        impl PropertyAccessorWithDefault for $name {}
-    };
-    ($name:ident, $nbits:expr, $out:ident, $invert:expr, $spreadsheet:ident, nodefault) => {
         #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
         pub struct $name {
             x: IoPad,
@@ -214,58 +205,12 @@ macro_rules! declare_accessor_big_only {
         }
         #[cfg(feature = "alloc")]
         impl PropertyAccessorWithStringConv for $name {}
+        impl PropertyAccessorWithDefault for $name {}
     };
 }
 
-declare_accessor_big_only!(
-    InputModeAccessor,
-    2,
-    InputBufMode,
-    INPUT_BUF_MODE,
-    nodefault
-);
+declare_accessor_big_only!(InputModeAccessor, 2, InputBufMode, INPUT_BUF_MODE);
 declare_accessor_big_only!(DataGateAccessor, 1, bool, DATA_GATE);
-
-impl PropertyAccessorWithDefault for IoFeedbackSourceAccessor {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
-            val == IoFeedbackSource::IO
-        } else {
-            val == IoFeedbackSource::default()
-        }
-    }
-}
-impl PropertyAccessorWithDefault for OutputSourceAccessor {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
-            val == PinOutputSrc::FlipFlop
-        } else {
-            val == PinOutputSrc::default()
-        }
-    }
-}
-impl PropertyAccessorWithDefault for OutputModeAccessor {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
-            val == OutputMode::PushPull
-        } else {
-            val == OutputMode::default()
-        }
-    }
-}
-impl PropertyAccessorWithDefault for InputModeAccessor {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
-            val == InputBufMode::NoVrefNoSt
-        } else {
-            val == InputBufMode::default()
-        }
-    }
-}
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

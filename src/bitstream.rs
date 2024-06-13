@@ -12,11 +12,17 @@ use bitvec::prelude::*;
 use crate::{
     fb::FunctionBlock,
     global_bits_code::{
-        ClockDivider, DataGate, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor, UseVref,
+        ClockDivider, DataGate, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor,
+        GlobalTermination, UseVref,
     },
     global_fuses::GlobalFuses,
-    io::{ExtraDedicatedInput, IVoltage, LegacyIVoltage, LegacyOVoltage, OVoltage},
+    io::{
+        ExtraDedicatedInput, IVoltage, IoVoltage, LegacyIVoltage, LegacyOVoltage, OVoltage,
+        OutputMode, SlewRate,
+    },
+    mc::{FlipFlopMode, RegClkSrc, XorMode},
     partdb::{XC2Device, XC2Part},
+    MCS_PER_FB,
 };
 
 pub(crate) trait BitHolder {
@@ -32,7 +38,7 @@ impl BitHolder for &mut BitArray {
         BitSlice::set(self, idx, val)
     }
     fn wipe(&mut self) {
-        self.fill(false);
+        self.fill(true);
     }
 }
 #[cfg(feature = "alloc")]
@@ -44,7 +50,7 @@ impl BitHolder for BitBox {
         BitSlice::set(self, idx, val)
     }
     fn wipe(&mut self) {
-        self.fill(false);
+        self.fill(true);
     }
 }
 
@@ -58,7 +64,7 @@ pub struct Coolrunner2<B: BitHolder> {
 impl Coolrunner2<BitBox> {
     pub fn new(part: XC2Part) -> Self {
         let fuse_dims = part.device.fuse_array_dims();
-        let bits = bitbox![0; fuse_dims.0 * fuse_dims.1];
+        let bits = bitbox![1; fuse_dims.0 * fuse_dims.1];
 
         let mut ret = Self { part, bits };
         ret.make_blank(false);
@@ -75,14 +81,106 @@ impl<B: BitHolder> Coolrunner2<B> {
 
         let fuse_dims = self.part.device.fuse_array_dims();
 
-        // Initialize security/done/usercode rows to all 1s
-        for x in 0..fuse_dims.0 {
-            self.set(Coordinate::new(x, fuse_dims.1 - 1), true);
-            self.set(Coordinate::new(x, fuse_dims.1 - 2), true);
+        // Clear transfer bits
+        match self.part.device {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => {
+                for y in 0..fuse_dims.1 - 2 {
+                    self.set(Coordinate::new(0, y), false);
+                    self.set(Coordinate::new(259, y), false);
+                }
+            }
+            XC2Device::XC2C64 | XC2Device::XC2C64A => {}
+            XC2Device::XC2C128 => {
+                for y in 0..fuse_dims.1 - 2 {
+                    self.set(Coordinate::new(0, y), false);
+                    self.set(Coordinate::new(375, y), false);
+                    self.set(Coordinate::new(376, y), false);
+                    self.set(Coordinate::new(751, y), false);
+                }
+            }
+            XC2Device::XC2C256 => {
+                for y in 0..fuse_dims.1 - 2 {
+                    self.set(Coordinate::new(0, y), false);
+                    self.set(Coordinate::new(681, y), false);
+                    self.set(Coordinate::new(682, y), false);
+                    self.set(Coordinate::new(1363, y), false);
+                }
+            }
+            XC2Device::XC2C384 => {
+                for y in 0..fuse_dims.1 - 2 {
+                    self.set(Coordinate::new(0, y), false);
+                    self.set(Coordinate::new(933, y), false);
+                    self.set(Coordinate::new(934, y), false);
+                    self.set(Coordinate::new(1867, y), false);
+                }
+            }
+            XC2Device::XC2C512 => {
+                for y in 0..fuse_dims.1 - 2 {
+                    self.set(Coordinate::new(0, y), false);
+                    self.set(Coordinate::new(989, y), false);
+                    self.set(Coordinate::new(990, y), false);
+                    self.set(Coordinate::new(1979, y), false);
+                }
+            }
         }
 
         // done1
         self.set(self.part.device.done1(), false);
+
+        // Wipe settings that need wiping
+        for fb in 0..self.part.device.num_fbs() {
+            for mc in 0..MCS_PER_FB {
+                self.set_prop(
+                    &self.fb(fb as u8).mc(mc as u8).clk_src(),
+                    RegClkSrc::default(),
+                );
+                self.set_prop(&self.fb(fb as u8).mc(mc as u8).clk_inv(), false);
+                self.set_prop(&self.fb(fb as u8).mc(mc as u8).is_ddr(), false);
+                self.set_prop(&self.fb(fb as u8).mc(mc as u8).init_state(), true);
+                self.set_prop(
+                    &self.fb(fb as u8).mc(mc as u8).ff_mode(),
+                    FlipFlopMode::default(),
+                );
+                self.set_prop(
+                    &self.fb(fb as u8).mc(mc as u8).xor_mode(),
+                    XorMode::default(),
+                );
+
+                if self.part.device.has_io_at(fb as u8, mc as u8) {
+                    self.set_prop(
+                        &self.fb(fb as u8).io(mc as u8).output_pad_mode(),
+                        OutputMode::default(),
+                    );
+                    self.set_prop(&self.fb(fb as u8).io(mc as u8).termination_enabled(), false);
+                    self.set_prop(
+                        &self.fb(fb as u8).io(mc as u8).slew_rate(),
+                        SlewRate::default(),
+                    );
+                    if self.part.device.has_large_macrocells() {
+                        self.set_prop(&self.fb(fb as u8).io(mc as u8).use_data_gate(), false);
+                    }
+                }
+            }
+        }
+
+        if self.part.device == XC2Device::XC2C32 || self.part.device == XC2Device::XC2C32A {
+            self.set_prop(&self.extra_dedicated_input().schmitt_trigger(), false);
+            self.set_prop(&self.extra_dedicated_input().termination_enabled(), false);
+        }
+
+        if self.part.device == XC2Device::XC2C512 {
+            for iobank in 0..4 {
+                self.set_prop(&self.input_voltage(iobank), IoVoltage::default());
+                self.set_prop(&self.output_voltage(iobank), IoVoltage::default());
+            }
+        }
+
+        for gck in 0..3 {
+            self.set_prop(&self.gck_enabled(gck), false);
+        }
+        self.set_prop(&self.gsr_enabled(), false);
+        self.set_prop(&self.gsr_invert(), false);
+        self.set_prop(&self.global_termination(), GlobalTermination::default());
     }
 }
 impl<B: BitHolder> BittwiddlerBitArray for Coolrunner2<B> {

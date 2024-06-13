@@ -167,19 +167,8 @@ declare_accessor!(
     MacrocellFeedbackSrc,
     MC_FEEDBACK_SRC
 );
-declare_accessor!(UseIOAccessor, 1, bool, true, USE_IOB, nodefault);
+declare_accessor!(UseIOAccessor, 1, bool, true, USE_IOB);
 declare_accessor!(XorModeAccessor, 2, XorMode, XOR_MODE);
-
-impl PropertyAccessorWithDefault for UseIOAccessor {
-    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
-        let val = self.get(bitstream);
-        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
-            val == true
-        } else {
-            val == false
-        }
-    }
-}
 
 impl PropertyAccessorWithDefault for InitStateAccessor {
     fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
