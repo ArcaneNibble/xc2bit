@@ -114,6 +114,17 @@ impl XC2Device {
         }
     }
 
+    pub const fn zia_choices(self) -> usize {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => 6,
+            XC2Device::XC2C64 | XC2Device::XC2C64A => 12,
+            XC2Device::XC2C128 => 22,
+            XC2Device::XC2C256 => 40,
+            XC2Device::XC2C384 => 62,
+            XC2Device::XC2C512 => 78,
+        }
+    }
+
     pub const fn fb_corner(self, fb: u8) -> Coordinate {
         match self {
             XC2Device::XC2C32 | XC2Device::XC2C32A => match fb {

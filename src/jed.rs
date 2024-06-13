@@ -11,7 +11,7 @@ use jedec::*;
 
 use crate::{
     bitstream::{BitHolder, Coolrunner2},
-    fb::{and_get_bit_pos, or_get_bit_pos, FunctionBlock},
+    fb::{AndTerm, CompInput, FunctionBlock, OrInput, OrTerm, TrueInput},
     global_fuses::*,
     io::IoPad,
     mc::Macrocell,
@@ -209,17 +209,48 @@ impl JedecCompat for XC2Device {
         } else if let Some((fb, offs)) = self._is_or(jed_idx) {
             let pterm_i = offs / 16;
             let mc = offs % 16;
-            or_get_bit_pos(*self, fb as u8, mc as u8, pterm_i as u8)
+            OrInput {
+                x: OrTerm {
+                    x: FunctionBlock {
+                        device: *self,
+                        fb: fb as u8,
+                    },
+                    mc: mc as u8,
+                },
+                pterm_i: pterm_i as u8,
+            }
+            .get_bit_pos(0)
+            .0
         } else if let Some((fb, offs)) = self._is_and(jed_idx) {
             let pterm_i = offs / 80;
             let offs_80 = offs % 80;
-            and_get_bit_pos(
-                *self,
-                fb as u8,
-                pterm_i as u8,
-                offs_80 as u8 / 2,
-                offs_80 % 2 == 1,
-            )
+            if offs_80 % 2 == 0 {
+                TrueInput {
+                    x: AndTerm {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        pterm_i: pterm_i as u8,
+                    },
+                    zia_row: offs_80 as u8 / 2,
+                }
+                .get_bit_pos(0)
+                .0
+            } else {
+                CompInput {
+                    x: AndTerm {
+                        x: FunctionBlock {
+                            device: *self,
+                            fb: fb as u8,
+                        },
+                        pterm_i: pterm_i as u8,
+                    },
+                    zia_row: offs_80 as u8 / 2,
+                }
+                .get_bit_pos(0)
+                .0
+            }
         } else if let Some((fb, offs)) = self._is_zia(jed_idx) {
             let zia_row = offs / self.zia_width();
             let zia_offs = offs % self.zia_width();

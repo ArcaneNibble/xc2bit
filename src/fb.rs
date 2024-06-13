@@ -150,13 +150,7 @@ const NOGAP_AND_TERM_PERMUTE: [usize; ANDTERMS_PER_FB] = [
     19, 18, 17,
     13, 12, 11
 ];
-pub(crate) fn and_get_bit_pos(
-    device: XC2Device,
-    fb: u8,
-    pterm_i: u8,
-    inp_i: u8,
-    comp: bool,
-) -> Coordinate {
+fn and_get_bit_pos(device: XC2Device, fb: u8, pterm_i: u8, inp_i: u8, comp: bool) -> Coordinate {
     match device {
         XC2Device::XC2C32
         | XC2Device::XC2C32A
@@ -216,6 +210,11 @@ impl OrTermAutomagicRequiredFunctions for OrTerm {
     }
 }
 
+const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
+    17, 19, 22, 20, 0, 1, 3, 4, 5, 7, 8, 11, 12, 13, 15, 16, 23, 24, 26, 27, 28, 31, 32, 34, 35,
+    36, 38, 39,
+];
+
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OrInput {
@@ -228,59 +227,58 @@ impl PropertyAccessor for OrInput {
 
     fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
         (
-            or_get_bit_pos(self.x.x.device, self.x.x.fb, self.x.mc, self.pterm_i),
+            {
+                let device = self.x.x.device;
+                let fb = self.x.x.fb;
+                let mc = self.x.mc;
+                let pterm_i = self.pterm_i;
+                match device {
+                    XC2Device::XC2C32
+                    | XC2Device::XC2C32A
+                    | XC2Device::XC2C64
+                    | XC2Device::XC2C64A
+                    | XC2Device::XC2C256 => {
+                        let x_base = mc as usize % 2 + pterm_i as usize * 2;
+                        let y_base = 20 + mc as usize / 2;
+
+                        let mc_offset = if device == XC2Device::XC2C256 { 10 } else { 9 };
+
+                        if fb % 2 == 0 {
+                            device.fb_corner(fb as u8)
+                                + Coordinate::new(mc_offset, 0)
+                                + Coordinate::new(x_base, y_base)
+                        } else {
+                            device.fb_corner(fb as u8).sub_x_add_y(
+                                Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
+                            )
+                        }
+                    }
+                    XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
+                        let y_base = SIDE_OR_ROW_PERMUTE[pterm_i as usize / 2];
+                        let x_base = mc as usize * 2
+                            + if y_base >= 23 {
+                                1 - pterm_i as usize % 2
+                            } else {
+                                pterm_i as usize % 2
+                            };
+
+                        if fb % 2 == 0 {
+                            device.fb_corner(fb as u8)
+                                + Coordinate::new(15, 0)
+                                + Coordinate::new(x_base, y_base)
+                        } else {
+                            device.fb_corner(fb as u8).sub_x_add_y(
+                                Coordinate::new(15, 0) + Coordinate::new(x_base, y_base),
+                            )
+                        }
+                    }
+                }
+            },
             true,
         )
     }
 }
+
 impl PropertyAccessorWithDefault for OrInput {}
 #[cfg(feature = "alloc")]
 impl PropertyAccessorWithStringConv for OrInput {}
-
-const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
-    17, 19, 22, 20, 0, 1, 3, 4, 5, 7, 8, 11, 12, 13, 15, 16, 23, 24, 26, 27, 28, 31, 32, 34, 35,
-    36, 38, 39,
-];
-pub(crate) fn or_get_bit_pos(device: XC2Device, fb: u8, mc: u8, pterm_i: u8) -> Coordinate {
-    match device {
-        XC2Device::XC2C32
-        | XC2Device::XC2C32A
-        | XC2Device::XC2C64
-        | XC2Device::XC2C64A
-        | XC2Device::XC2C256 => {
-            let x_base = mc as usize % 2 + pterm_i as usize * 2;
-            let y_base = 20 + mc as usize / 2;
-
-            let mc_offset = if device == XC2Device::XC2C256 { 10 } else { 9 };
-
-            if fb % 2 == 0 {
-                device.fb_corner(fb as u8)
-                    + Coordinate::new(mc_offset, 0)
-                    + Coordinate::new(x_base, y_base)
-            } else {
-                device
-                    .fb_corner(fb as u8)
-                    .sub_x_add_y(Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base))
-            }
-        }
-        XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-            let y_base = SIDE_OR_ROW_PERMUTE[pterm_i as usize / 2];
-            let x_base = mc as usize * 2
-                + if y_base >= 23 {
-                    1 - pterm_i as usize % 2
-                } else {
-                    pterm_i as usize % 2
-                };
-
-            if fb % 2 == 0 {
-                device.fb_corner(fb as u8)
-                    + Coordinate::new(15, 0)
-                    + Coordinate::new(x_base, y_base)
-            } else {
-                device
-                    .fb_corner(fb as u8)
-                    .sub_x_add_y(Coordinate::new(15, 0) + Coordinate::new(x_base, y_base))
-            }
-        }
-    }
-}
