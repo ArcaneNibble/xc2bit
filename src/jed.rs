@@ -920,7 +920,9 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
 
         let jed = JEDECFile {
             f: jed_fuses,
-            header: b"crbit native bitstream file written by xc2bit\nhttps://github.com/ArcaneNibble/xc2bit\n\n" as &[u8],
+            header:
+                b"programming file written by xc2bit\nhttps://github.com/ArcaneNibble/xc2bit\n\n"
+                    as &[u8],
             footer: b"" as &[u8],
             design_spec: b"" as &[u8],
             notes: &[],
