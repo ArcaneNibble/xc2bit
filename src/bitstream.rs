@@ -1,9 +1,12 @@
 //! Top-level bitstream functions
 
-use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate, PropertyAccessor};
+use bittwiddler_core::prelude::{
+    BitArray as BittwiddlerBitArray, Coordinate, PropertyAccessor, PropertyAccessorWithDefault,
+    PropertyAccessorWithStringConv,
+};
 #[cfg(feature = "alloc")]
 use bittwiddler_core::prelude::{HumanLevelThatHasState, HumanSinkForStatePieces};
-use bittwiddler_macros::bittwiddler_properties;
+use bittwiddler_macros::*;
 use bitvec::prelude::*;
 
 use crate::{
@@ -221,6 +224,13 @@ impl<B: BitHolder> Coolrunner2<B> {
             io_bank,
         }
     }
+
+    #[bittwiddler::property]
+    pub fn usercode(&self) -> UserCode {
+        UserCode {
+            device: self.part.device,
+        }
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -285,6 +295,36 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     }
     fn _automagic_construct_all_output_voltage(&self) -> impl Iterator<Item = OVoltage> {
         (0..self.part.device.num_io_banks()).map(|io_bank| self.output_voltage(io_bank as u8))
+    }
+}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct UserCode {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+impl PropertyAccessor for UserCode {
+    type BoolArray = [bool; 32];
+    type Output = u32;
+
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        match self.device {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => (Coordinate::new(249 - biti, 49), false),
+            XC2Device::XC2C64 | XC2Device::XC2C64A => (Coordinate::new(273 - biti, 97), false),
+            XC2Device::XC2C128 => (Coordinate::new(298 + biti, 81), false),
+            XC2Device::XC2C256 => (Coordinate::new(299 + biti, 97), false),
+            XC2Device::XC2C384 => (Coordinate::new(886 + biti, 121), false),
+            XC2Device::XC2C512 => (Coordinate::new(299 + biti, 161), false),
+        }
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for UserCode {}
+impl PropertyAccessorWithDefault for UserCode {
+    fn is_at_default(&self, bitstream: &(impl BittwiddlerBitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        val == 0xffffffff
     }
 }
 

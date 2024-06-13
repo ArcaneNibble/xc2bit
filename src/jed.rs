@@ -939,6 +939,8 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use crate::bitstream::UserCode;
+
     use super::*;
     extern crate std;
     use std::path::PathBuf;
@@ -952,6 +954,8 @@ mod tests {
                 .map(|l| l.split('\t').collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
+            let usercode_accessor = UserCode { device };
+
             for (x, xi) in map_bits.iter().enumerate() {
                 for (y, map_bit) in xi.iter().enumerate() {
                     if *map_bit != "" {
@@ -964,6 +968,9 @@ mod tests {
                                 && x < 249
                                 && y == 49
                             {
+                                println!("checking ({}, {}) = usercode[{}]", x, y, jed_idx);
+                                let c = usercode_accessor.get_bit_pos(jed_idx).0;
+                                assert_eq!(c, Coordinate::new(x, y));
                                 continue;
                             }
                             if device == XC2Device::XC2C64A
@@ -980,6 +987,16 @@ mod tests {
                             assert_eq!(c, Coordinate::new(x, y));
                         } else if *map_bit == "spare" {
                             // do nothing
+                        } else if let Some(usercode_bit) = map_bit.strip_prefix("user_") {
+                            let usercode_bit = usercode_bit.parse::<usize>().unwrap();
+                            println!("checking ({}, {}) = usercode[{}]", x, y, usercode_bit);
+                            let c = usercode_accessor.get_bit_pos(usercode_bit).0;
+                            assert_eq!(c, Coordinate::new(x, y));
+                        } else if let Some(usercode_bit) = map_bit.strip_prefix("user ") {
+                            let usercode_bit = usercode_bit.parse::<usize>().unwrap();
+                            println!("checking ({}, {}) = usercode[{}]", x, y, usercode_bit);
+                            let c = usercode_accessor.get_bit_pos(usercode_bit).0;
+                            assert_eq!(c, Coordinate::new(x, y));
                         } else {
                             println!("TODO: {}", map_bit);
                         }
