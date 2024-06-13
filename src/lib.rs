@@ -26,6 +26,7 @@ pub mod crbit;
 pub mod fb;
 pub mod global_bits_code;
 pub mod global_fuses;
+pub mod io;
 pub mod jed;
 pub mod mc;
 pub mod partdb;

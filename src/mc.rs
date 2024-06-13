@@ -64,13 +64,13 @@ impl Macrocell {
 
 macro_rules! declare_accessor {
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident) => {
-        declare_accessor!($name, $nbits, $out, false, $spreadsheet);
+        crate::mc::declare_accessor!($name, $nbits, $out, false, $spreadsheet);
     };
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident, nodefault) => {
-        declare_accessor!($name, $nbits, $out, false, $spreadsheet, nodefault);
+        rate::mc::declare_accessor!($name, $nbits, $out, false, $spreadsheet, nodefault);
     };
     ($name:ident, $nbits:expr, $out:ident, $invert:expr, $spreadsheet:ident) => {
-        declare_accessor!($name, $nbits, $out, $invert, $spreadsheet, nodefault);
+        crate::mc::declare_accessor!($name, $nbits, $out, $invert, $spreadsheet, nodefault);
         impl PropertyAccessorWithDefault for $name {}
     };
     ($name:ident, $nbits:expr, $out:ident, $invert:expr, $spreadsheet:ident, nodefault) => {
@@ -111,6 +111,7 @@ macro_rules! declare_accessor {
         impl PropertyAccessorWithStringConv for $name {}
     };
 }
+pub(crate) use declare_accessor;
 
 declare_accessor!(ClockSourceAccessor, 3, RegClkSrc, CLOCK_SOURCE);
 declare_accessor!(ClockInvertAccessor, 1, bool, CLOCK_INV);

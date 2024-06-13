@@ -1,0 +1,9 @@
+/// Mux selection for the ZIA input from this I/O pin's input.
+/// The ZIA input can be chosen to come from either the
+/// input pin directly or from the output of the register.
+/// The latter is used to allow for buried combinatorial feedback
+/// in a macrocell without "wasting" the register.
+IoFeedbackSource
+X1      *Disabled
+00      IO
+10      FlipFlop

@@ -1,0 +1,3 @@
+PinOutputSrc
+0   FlipFlop
+1   *XorGate

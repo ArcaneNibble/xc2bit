@@ -1,0 +1,14 @@
+/// Mode selection for the I/O pin's output buffer.
+/// See the Xilinx Coolrunner-II documentation for more information.
+OutputMode
+1111        Disabled
+0000        PushPull
+0001        OpenDrain
+1100        TriStateGTS0
+0010        TriStateGTS1
+1010        TriStateGTS2
+0110        TriStateGTS3
+0100        TriStatePTB
+1000        TriStateCTE
+1110        *CGND
+catchall    Invalid

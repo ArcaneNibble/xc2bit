@@ -3,7 +3,7 @@
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
 
-use crate::{mc::Macrocell, partdb::XC2Device, ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS};
+use crate::{io::IoPad, mc::Macrocell, partdb::XC2Device, ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS};
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -26,6 +26,10 @@ impl FunctionBlock {
         assert!((mc as usize) < MCS_PER_FB);
         Macrocell { x: *self, mc }
     }
+    pub fn io(&self, mc: u8) -> IoPad {
+        assert!((mc as usize) < MCS_PER_FB);
+        IoPad { x: *self, mc }
+    }
 }
 #[cfg(feature = "alloc")]
 impl FunctionBlockAutomagicRequiredFunctions for FunctionBlock {
@@ -37,6 +41,9 @@ impl FunctionBlockAutomagicRequiredFunctions for FunctionBlock {
     }
     fn _automagic_construct_all_mc(&self) -> impl Iterator<Item = Macrocell> {
         (0..MCS_PER_FB).map(|mc| self.mc(mc as u8))
+    }
+    fn _automagic_construct_all_io(&self) -> impl Iterator<Item = IoPad> {
+        (0..MCS_PER_FB).map(|mc| self.io(mc as u8))
     }
 }
 
