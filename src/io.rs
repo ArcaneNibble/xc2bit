@@ -7,7 +7,7 @@ use crate::mc;
 use crate::{
     fb::FunctionBlock,
     partdb::XC2Device,
-    spreadsheet_magic::{xc2c256_macrocell, xc2c32a_macrocell, xc2c64a_macrocell},
+    spreadsheet_magic::{big_macrocell, xc2c256_macrocell, xc2c32a_macrocell, xc2c64a_macrocell},
 };
 
 include!(concat!(env!("OUT_DIR"), "/io-fb.rs"));
@@ -158,9 +158,20 @@ macro_rules! declare_accessor_big_only {
                         },
                         $invert,
                     ),
-                    XC2Device::XC2C128 => todo!(),
-                    XC2Device::XC2C384 => todo!(),
-                    XC2Device::XC2C512 => todo!(),
+                    XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => (
+                        {
+                            let c = Coordinate::new(
+                                0,
+                                crate::mc::BIG_MC_STARTING_ROW[self.x.mc as usize],
+                            ) + big_macrocell::$spreadsheet[biti];
+                            if fb % 2 == 0 {
+                                device.fb_corner(fb) + c
+                            } else {
+                                device.fb_corner(fb).sub_x_add_y(c)
+                            }
+                        },
+                        $invert,
+                    ),
                 }
             }
         }

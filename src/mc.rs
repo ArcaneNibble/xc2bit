@@ -6,7 +6,8 @@ use bittwiddler_macros::*;
 use crate::{
     fb::FunctionBlock,
     partdb::XC2Device,
-    spreadsheet_magic::{xc2c256_macrocell, xc2c32a_macrocell, xc2c64a_macrocell},
+    spreadsheet_magic::{big_macrocell, xc2c256_macrocell, xc2c32a_macrocell, xc2c64a_macrocell},
+    MCS_PER_FB,
 };
 
 include!(concat!(env!("OUT_DIR"), "/mc-clk-src.rs"));
@@ -65,6 +66,9 @@ impl Macrocell {
         XorModeAccessor { x: *self }
     }
 }
+
+pub(crate) const BIG_MC_STARTING_ROW: [usize; MCS_PER_FB] =
+    [0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38];
 
 macro_rules! declare_accessor {
     ($name:ident, $nbits:expr, $out:ident,$spreadsheet:ident) => {
@@ -127,9 +131,20 @@ macro_rules! declare_accessor {
                         },
                         $invert,
                     ),
-                    XC2Device::XC2C128 => todo!(),
-                    XC2Device::XC2C384 => todo!(),
-                    XC2Device::XC2C512 => todo!(),
+                    XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => (
+                        {
+                            let c = Coordinate::new(
+                                0,
+                                crate::mc::BIG_MC_STARTING_ROW[self.x.mc as usize],
+                            ) + big_macrocell::$spreadsheet[biti];
+                            if fb % 2 == 0 {
+                                device.fb_corner(fb) + c
+                            } else {
+                                device.fb_corner(fb).sub_x_add_y(c)
+                            }
+                        },
+                        $invert,
+                    ),
                 }
             }
         }

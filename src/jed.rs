@@ -19,118 +19,6 @@ use crate::{
     ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
 };
 
-const XC2C256_MC_WITH_IO_PERMUTE: [Coordinate; 29] = [
-    // row 1
-    Coordinate::new(9, 0),
-    Coordinate::new(7, 0),
-    Coordinate::new(8, 0),
-    Coordinate::new(6, 0),
-    Coordinate::new(5, 0),
-    Coordinate::new(4, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-    Coordinate::new(0, 0),
-    Coordinate::new(1, 0),
-    // row 2
-    Coordinate::new(9, 1),
-    Coordinate::new(7, 1),
-    Coordinate::new(8, 1),
-    Coordinate::new(3, 1),
-    Coordinate::new(4, 1),
-    Coordinate::new(5, 1),
-    Coordinate::new(6, 1),
-    Coordinate::new(1, 1),
-    Coordinate::new(2, 1),
-    Coordinate::new(0, 1),
-    // row 3
-    Coordinate::new(8, 2),
-    Coordinate::new(6, 2),
-    Coordinate::new(7, 2),
-    Coordinate::new(4, 2),
-    Coordinate::new(5, 2),
-    Coordinate::new(3, 2),
-    Coordinate::new(2, 2),
-    Coordinate::new(0, 2),
-    Coordinate::new(1, 2),
-];
-const XC2C256_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
-    // row 1
-    Coordinate::new(9, 0),
-    Coordinate::new(7, 0),
-    Coordinate::new(8, 0),
-    Coordinate::new(6, 0),
-    Coordinate::new(5, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-    // row 2
-    Coordinate::new(1, 1),
-    Coordinate::new(2, 1),
-    Coordinate::new(0, 1),
-    // row 3
-    Coordinate::new(6, 2),
-    Coordinate::new(7, 2),
-    Coordinate::new(4, 2),
-    Coordinate::new(5, 2),
-    Coordinate::new(0, 2),
-    Coordinate::new(1, 2),
-];
-
-const BIG_MC_WITH_IO_PERMUTE: [Coordinate; 29] = [
-    // row 1 (mostly)
-    Coordinate::new(8, 0),
-    Coordinate::new(9, 0),
-    Coordinate::new(10, 0),
-    Coordinate::new(11, 0),
-    Coordinate::new(12, 0),
-    Coordinate::new(4, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-    Coordinate::new(5, 0),
-    Coordinate::new(6, 0),
-    Coordinate::new(13, 0),
-    Coordinate::new(0, 0),
-    Coordinate::new(1, 0),
-    // row 2 (mostly)
-    Coordinate::new(2, 1),
-    Coordinate::new(3, 1),
-    Coordinate::new(4, 1),
-    Coordinate::new(5, 1),
-    Coordinate::new(13, 1),
-    Coordinate::new(14, 1),
-    Coordinate::new(14, 0),
-    Coordinate::new(8, 1),
-    Coordinate::new(9, 1),
-    Coordinate::new(10, 1),
-    Coordinate::new(11, 1),
-    Coordinate::new(12, 1),
-    Coordinate::new(6, 1),
-    Coordinate::new(7, 0),
-    Coordinate::new(0, 1),
-    Coordinate::new(1, 1),
-];
-const BIG_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
-    // row 1 (mostly)
-    Coordinate::new(8, 0),
-    Coordinate::new(9, 0),
-    Coordinate::new(10, 0),
-    Coordinate::new(11, 0),
-    Coordinate::new(12, 0),
-    Coordinate::new(2, 0),
-    Coordinate::new(3, 0),
-    // row 2 (mostly)
-    Coordinate::new(13, 1),
-    Coordinate::new(14, 1),
-    Coordinate::new(14, 0),
-    Coordinate::new(9, 1),
-    Coordinate::new(10, 1),
-    Coordinate::new(11, 1),
-    Coordinate::new(12, 1),
-    Coordinate::new(0, 1),
-    Coordinate::new(1, 1),
-];
-const BIG_MC_STARTING_ROW: [usize; MCS_PER_FB] =
-    [0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38];
-
 fn get_fat_mc_idx(device: XC2Device, fb: usize, offs: usize) -> (usize, usize) {
     let mut accum_offs = 0;
     for mc in 0..16 {
@@ -242,7 +130,10 @@ impl JedecCompat for XC2Device {
                         _ => unreachable!(),
                     }
                 }
-                XC2Device::XC2C256 => {
+                XC2Device::XC2C128
+                | XC2Device::XC2C256
+                | XC2Device::XC2C384
+                | XC2Device::XC2C512 => {
                     let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
                     let a_mc = Macrocell {
                         x: FunctionBlock {
@@ -312,23 +203,6 @@ impl JedecCompat for XC2Device {
                             15 => a_mc.xor_mode().get_bit_pos(1).0,
                             _ => unreachable!(),
                         }
-                    }
-                }
-                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-                    let (mc, mc_offs) = get_fat_mc_idx(*self, fb, offs);
-                    let permute_c = if self.has_io_at(fb as u8, mc as u8) {
-                        BIG_MC_WITH_IO_PERMUTE[mc_offs]
-                    } else {
-                        BIG_MC_NO_IO_PERMUTE[mc_offs]
-                    };
-
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8)
-                            + Coordinate::new(0, BIG_MC_STARTING_ROW[mc])
-                            + permute_c
-                    } else {
-                        self.fb_corner(fb as u8)
-                            .sub_x_add_y(Coordinate::new(0, BIG_MC_STARTING_ROW[mc]) + permute_c)
                     }
                 }
             }
