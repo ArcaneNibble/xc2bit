@@ -16,6 +16,7 @@ use crate::{
     io::IoPad,
     mc::Macrocell,
     partdb::{XC2Device, XC2Part},
+    zia::ZIARowAccessor,
     ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
 };
 
@@ -254,30 +255,15 @@ impl JedecCompat for XC2Device {
         } else if let Some((fb, offs)) = self._is_zia(jed_idx) {
             let zia_row = offs / self.zia_width();
             let zia_offs = offs % self.zia_width();
-
-            let x_base = (self.zia_width() - 1 - zia_offs) * 2 + fb % 2;
-            let y_base = match self {
-                XC2Device::XC2C32
-                | XC2Device::XC2C32A
-                | XC2Device::XC2C64
-                | XC2Device::XC2C64A
-                | XC2Device::XC2C256 => zia_row + if zia_row >= 20 { 8 } else { 0 },
-                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => zia_row,
-            };
-
-            let mc_or_and_offset = match self {
-                XC2Device::XC2C32 | XC2Device::XC2C32A | XC2Device::XC2C64 | XC2Device::XC2C64A => {
-                    9 + ANDTERMS_PER_FB * 2
-                }
-                XC2Device::XC2C256 => 10 + ANDTERMS_PER_FB * 2,
-                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-                    15 + MCS_PER_FB * 2 + ANDTERMS_PER_FB * 2
-                }
-            };
-
-            self.fb_corner((fb & !1) as u8)
-                + Coordinate::new(mc_or_and_offset, 0)
-                + Coordinate::new(x_base, y_base)
+            ZIARowAccessor {
+                x: FunctionBlock {
+                    device: *self,
+                    fb: fb as u8,
+                },
+                zia_row: zia_row as u8,
+            }
+            .get_bit_pos(zia_offs)
+            .0
         } else {
             match self {
                 XC2Device::XC2C32 | XC2Device::XC2C32A => {

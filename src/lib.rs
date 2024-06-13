@@ -30,6 +30,7 @@ pub mod io;
 pub mod jed;
 pub mod mc;
 pub mod partdb;
+pub mod zia;
 
 pub mod spreadsheet_magic {
     include!(concat!(env!("OUT_DIR"), "/tiles-out.rs"));
