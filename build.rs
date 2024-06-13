@@ -36,6 +36,7 @@ fn main() {
     generate_one_enum("io-ibuf-mode");
 
     generate_one_enum("global-term");
+    generate_one_enum("clk-div");
 
     {
         let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

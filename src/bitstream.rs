@@ -8,7 +8,7 @@ use bitvec::prelude::*;
 
 use crate::{
     fb::FunctionBlock,
-    global_bits_code::{GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor},
+    global_bits_code::{ClockDivider, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor},
     global_fuses::GlobalFuses,
     io::ExtraDedicatedInput,
     partdb::{XC2Device, XC2Part},
@@ -164,6 +164,13 @@ impl<B: BitHolder> Coolrunner2<B> {
     pub fn extra_dedicated_input(&self) -> ExtraDedicatedInput {
         ExtraDedicatedInput {}
     }
+
+    #[bittwiddler::conditional]
+    pub fn clock_divider(&self) -> ClockDivider {
+        ClockDivider {
+            device: self.part.device,
+        }
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -184,6 +191,13 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     ) -> impl Iterator<Item = ExtraDedicatedInput> {
         let mut x = [self.extra_dedicated_input()].into_iter();
         if self.part.device != XC2Device::XC2C32 && self.part.device != XC2Device::XC2C32A {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_clock_divider(&self) -> impl Iterator<Item = ClockDivider> {
+        let mut x = [self.clock_divider()].into_iter();
+        if !self.part.device.has_large_macrocells() {
             x.next();
         }
         x

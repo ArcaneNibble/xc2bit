@@ -1,7 +1,7 @@
 //! Global bits
 
 use bittwiddler_core::prelude::*;
-use bittwiddler_macros::bittwiddler_hierarchy_level;
+use bittwiddler_macros::*;
 
 use crate::{global_fuses::GlobalFuses, partdb::XC2Device};
 
@@ -114,3 +114,75 @@ impl PropertyAccessor for GlobalTermAccessor {
 impl PropertyAccessorWithDefault for GlobalTermAccessor {}
 #[cfg(feature = "alloc")]
 impl PropertyAccessorWithStringConv for GlobalTermAccessor {}
+
+include!(concat!(env!("OUT_DIR"), "/clk-div.rs"));
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ClockDivider {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
+impl ClockDivider {
+    #[bittwiddler::property]
+    pub fn enabled(&self) -> ClkDivEnable {
+        ClkDivEnable { x: *self }
+    }
+    #[bittwiddler::property]
+    pub fn delay(&self) -> ClkDivDelay {
+        ClkDivDelay { x: *self }
+    }
+    #[bittwiddler::property]
+    pub fn ratio(&self) -> ClkDivRatioAccessor {
+        ClkDivRatioAccessor { x: *self }
+    }
+}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct ClkDivEnable {
+    x: ClockDivider,
+}
+impl PropertyAccessor for ClkDivEnable {
+    type BoolArray = [bool; 1];
+    type Output = bool;
+
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (self.x.device.clk_div_enable(), true)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for ClkDivEnable {}
+impl PropertyAccessorWithDefault for ClkDivEnable {}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct ClkDivDelay {
+    x: ClockDivider,
+}
+impl PropertyAccessor for ClkDivDelay {
+    type BoolArray = [bool; 1];
+    type Output = bool;
+
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (self.x.device.clk_div_delay(), true)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for ClkDivDelay {}
+impl PropertyAccessorWithDefault for ClkDivDelay {}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct ClkDivRatioAccessor {
+    x: ClockDivider,
+}
+impl PropertyAccessor for ClkDivRatioAccessor {
+    type BoolArray = [bool; 3];
+    type Output = ClockDivRatio;
+
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (self.x.device.clk_div_ratio()[biti], false)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for ClkDivRatioAccessor {}
+impl PropertyAccessorWithDefault for ClkDivRatioAccessor {}
