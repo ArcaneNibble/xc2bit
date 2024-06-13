@@ -93,10 +93,23 @@ mc::declare_accessor!(
     IoFeedbackSourceAccessor,
     2,
     IoFeedbackSource,
-    IO_FEEDBACK_SRC
+    IO_FEEDBACK_SRC,
+    nodefault
 );
-mc::declare_accessor!(OutputSourceAccessor, 1, PinOutputSrc, REG_OR_COMB);
-mc::declare_accessor!(OutputModeAccessor, 4, OutputMode, OUTPUT_BUF_MODE);
+mc::declare_accessor!(
+    OutputSourceAccessor,
+    1,
+    PinOutputSrc,
+    REG_OR_COMB,
+    nodefault
+);
+mc::declare_accessor!(
+    OutputModeAccessor,
+    4,
+    OutputMode,
+    OUTPUT_BUF_MODE,
+    nodefault
+);
 mc::declare_accessor!(TerminationAccessor, 1, bool, TERMINATION_ENABLED);
 mc::declare_accessor!(SlewAccessor, 1, SlewRate, SLEW_RATE);
 
@@ -208,5 +221,52 @@ macro_rules! declare_accessor_big_only {
     };
 }
 
-declare_accessor_big_only!(InputModeAccessor, 2, InputBufMode, INPUT_BUF_MODE);
+declare_accessor_big_only!(
+    InputModeAccessor,
+    2,
+    InputBufMode,
+    INPUT_BUF_MODE,
+    nodefault
+);
 declare_accessor_big_only!(DataGateAccessor, 1, bool, DATA_GATE);
+
+impl PropertyAccessorWithDefault for IoFeedbackSourceAccessor {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
+            val == IoFeedbackSource::IO
+        } else {
+            val == IoFeedbackSource::default()
+        }
+    }
+}
+impl PropertyAccessorWithDefault for OutputSourceAccessor {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
+            val == PinOutputSrc::FlipFlop
+        } else {
+            val == PinOutputSrc::default()
+        }
+    }
+}
+impl PropertyAccessorWithDefault for OutputModeAccessor {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
+            val == OutputMode::PushPull
+        } else {
+            val == OutputMode::default()
+        }
+    }
+}
+impl PropertyAccessorWithDefault for InputModeAccessor {
+    fn is_at_default(&self, bitstream: &(impl BitArray + ?Sized)) -> bool {
+        let val = self.get(bitstream);
+        if !self.x.x.device.has_io_at(self.x.x.fb, self.x.mc) {
+            val == InputBufMode::NoVrefNoSt
+        } else {
+            val == InputBufMode::default()
+        }
+    }
+}
