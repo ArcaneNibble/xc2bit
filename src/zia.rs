@@ -317,11 +317,11 @@ impl PropertyAccessor for ZIARowAccessor {
             XC2Device::XC2C512 => ZIA_PATS_512,
         };
 
-        for zia_row_i in 0..(self.x.device.zia_choices() + 2) {
+        for zia_row_i in 0..(self.x.device.num_zia_choices() + 2) {
             if &bits[..self.x.device.zia_width()] == match_pats[zia_row_i] {
-                if zia_row_i == self.x.device.zia_choices() {
+                if zia_row_i == self.x.device.num_zia_choices() {
                     return ZIARow::VCC;
-                } else if zia_row_i == self.x.device.zia_choices() + 1 {
+                } else if zia_row_i == self.x.device.num_zia_choices() + 1 {
                     return ZIARow::GND;
                 } else {
                     return ZIARow::MuxChoice(zia_row_i as u8);
@@ -343,8 +343,8 @@ impl PropertyAccessor for ZIARowAccessor {
         };
 
         let bits = match val {
-            ZIARow::VCC => match_pats[self.x.device.zia_choices()],
-            ZIARow::GND => match_pats[self.x.device.zia_choices() + 1],
+            ZIARow::VCC => match_pats[self.x.device.num_zia_choices()],
+            ZIARow::GND => match_pats[self.x.device.num_zia_choices() + 1],
             ZIARow::MuxChoice(row) => match_pats[row as usize],
             ZIARow::Invalid(ref bits) => bits,
         };
@@ -382,9 +382,37 @@ impl Default for ZIARow {
 }
 #[cfg(feature = "alloc")]
 impl PropertyLeafWithStringConv<[bool; 0], ZIARowAccessor> for ZIARow {
-    fn to_string(&self, _accessor: &ZIARowAccessor) -> alloc::borrow::Cow<'static, str> {
-        // todo
-        alloc::format!("{:?}", self).into()
+    fn to_string(&self, accessor: &ZIARowAccessor) -> alloc::borrow::Cow<'static, str> {
+        let device = accessor.x.device;
+        let zia_row = accessor.zia_row;
+        match self {
+            ZIARow::VCC => "1".into(),
+            ZIARow::GND => "0".into(),
+            ZIARow::MuxChoice(zia_choice) => {
+                let zia_ent = device.zia_table_get_row(zia_row)[*zia_choice as usize];
+                match zia_ent {
+                    ZIATableEntry::Macrocell { fb, mc } => {
+                        alloc::format!("Macrocell(FB{fb}, MC{mc})").into()
+                    }
+                    ZIATableEntry::InputPin { fb, mc } => {
+                        alloc::format!("InputPin(FB{fb}, MC{mc})").into()
+                    }
+                    ZIATableEntry::DedicatedInputPin => "DedicatedInputPin".into(),
+                }
+            }
+            ZIARow::Invalid(bits) => {
+                let mut ret = alloc::string::String::from("Invalid(");
+                for &bit in &bits[..device.zia_width()] {
+                    if bit {
+                        ret.push('1');
+                    } else {
+                        ret.push('0');
+                    }
+                }
+                ret.push(')');
+                ret.into()
+            }
+        }
     }
 
     fn from_string(_s: &str, _accessor: &ZIARowAccessor) -> Result<Self, ()>
@@ -412,3 +440,12 @@ impl PropertyLeafWithStringConv<[bool; 0], ZIARowAccessor> for ZIARow {
         // Ok(Self::from_bits(&bits))
     }
 }
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
+pub enum ZIATableEntry {
+    Macrocell { fb: u8, mc: u8 },
+    InputPin { fb: u8, mc: u8 },
+    DedicatedInputPin,
+}
+
+pub mod table;

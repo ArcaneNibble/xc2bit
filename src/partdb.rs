@@ -11,6 +11,8 @@ use bittwiddler_core::prelude::Coordinate;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use crate::zia::{table as zia_table, ZIATableEntry};
+
 /// Coolrunner-II devices
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -114,7 +116,18 @@ impl XC2Device {
         }
     }
 
-    pub const fn zia_choices(self) -> usize {
+    pub fn zia_table_get_row(self, row: u8) -> &'static [ZIATableEntry] {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C32A => &zia_table::ZIA_MAP_32[row as usize],
+            XC2Device::XC2C64 | XC2Device::XC2C64A => &zia_table::ZIA_MAP_64[row as usize],
+            XC2Device::XC2C128 => &zia_table::ZIA_MAP_128[row as usize],
+            XC2Device::XC2C256 => &zia_table::ZIA_MAP_256[row as usize],
+            XC2Device::XC2C384 => &zia_table::ZIA_MAP_384[row as usize],
+            XC2Device::XC2C512 => &zia_table::ZIA_MAP_512[row as usize],
+        }
+    }
+
+    pub const fn num_zia_choices(self) -> usize {
         match self {
             XC2Device::XC2C32 | XC2Device::XC2C32A => 6,
             XC2Device::XC2C64 | XC2Device::XC2C64A => 12,
