@@ -11,6 +11,7 @@ use jedec::*;
 
 use crate::{
     bitstream::{BitHolder, Coolrunner2},
+    fb::and_get_bit_pos,
     global_fuses::*,
     partdb::{XC2Device, XC2Part},
     ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
@@ -164,25 +165,6 @@ const BIG_MC_STARTING_ROW: [usize; MCS_PER_FB] =
 const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
     17, 19, 22, 20, 0, 1, 3, 4, 5, 7, 8, 11, 12, 13, 15, 16, 23, 24, 26, 27, 28, 31, 32, 34, 35,
     36, 38, 39,
-];
-#[rustfmt::skip]
-const NOGAP_AND_TERM_PERMUTE: [usize; ANDTERMS_PER_FB] = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    14, 15, 16,
-    20, 21, 22,
-    26, 27, 28,
-    32, 33, 34,
-    38, 39, 40,
-    44, 45, 46,
-    50, 51, 52,
-    55, 54, 53,
-    49, 48, 47,
-    43, 42, 41,
-    37, 36, 35,
-    31, 30, 29,
-    25, 24, 23,
-    19, 18, 17,
-    13, 12, 11
 ];
 
 fn get_fat_mc_idx(device: XC2Device, fb: usize, offs: usize) -> (usize, usize) {
@@ -350,49 +332,15 @@ impl JedecCompat for XC2Device {
                 }
             }
         } else if let Some((fb, offs)) = self._is_and(jed_idx) {
-            match self {
-                XC2Device::XC2C32
-                | XC2Device::XC2C32A
-                | XC2Device::XC2C64
-                | XC2Device::XC2C64A
-                | XC2Device::XC2C256 => {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = (1 - offs_80 % 2) + group_80 * 2;
-                    let y_base = offs_80 / 2 + if offs_80 >= 40 { 8 } else { 0 };
-
-                    let mc_offset = if *self == XC2Device::XC2C256 { 10 } else { 9 };
-
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8)
-                            + Coordinate::new(mc_offset, 0)
-                            + Coordinate::new(x_base, y_base)
-                    } else {
-                        self.fb_corner(fb as u8).sub_x_add_y(
-                            Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
-                        )
-                    }
-                }
-                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-                    let group_80 = offs / 80;
-                    let offs_80 = offs % 80;
-
-                    let x_base = NOGAP_AND_TERM_PERMUTE[group_80] * 2 + 1 - offs_80 % 2;
-                    let y_base = offs_80 / 2;
-
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8)
-                            + Coordinate::new(15 + MCS_PER_FB * 2, 0)
-                            + Coordinate::new(x_base, y_base)
-                    } else {
-                        self.fb_corner(fb as u8).sub_x_add_y(
-                            Coordinate::new(15 + MCS_PER_FB * 2, 0)
-                                + Coordinate::new(x_base, y_base),
-                        )
-                    }
-                }
-            }
+            let pterm_i = offs / 80;
+            let offs_80 = offs % 80;
+            and_get_bit_pos(
+                *self,
+                fb as u8,
+                pterm_i as u8,
+                offs_80 as u8 / 2,
+                offs_80 % 2 == 1,
+            )
         } else if let Some((fb, offs)) = self._is_zia(jed_idx) {
             let zia_row = offs / self.zia_width();
             let zia_offs = offs % self.zia_width();
