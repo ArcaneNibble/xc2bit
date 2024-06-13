@@ -415,29 +415,99 @@ impl PropertyLeafWithStringConv<[bool; 0], ZIARowAccessor> for ZIARow {
         }
     }
 
-    fn from_string(_s: &str, _accessor: &ZIARowAccessor) -> Result<Self, ()>
+    fn from_string(s: &str, accessor: &ZIARowAccessor) -> Result<Self, ()>
     where
         Self: Sized,
     {
-        todo!()
-        // if s.len() != <[bool; 0]>::NBITS {
-        //     return Err(());
-        // }
+        let device = accessor.x.device;
 
-        // // safety: T::MaybeUninitTy is an array of MaybeUninit which doesn't require init
-        // let mut bits: <[bool; 0]>::MaybeUninitTy = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-        // for (i, c) in s.chars().rev().enumerate() {
-        //     if c == '1' {
-        //         bits.as_mut()[i].write(true);
-        //     } else if c == '0' {
-        //         bits.as_mut()[i].write(false);
-        //     } else {
-        //         return Err(());
-        //     }
-        // }
-        // // safety: converting between the same memory representation, guaranteed by MaybeUninit
-        // let bits = unsafe { core::mem::transmute_copy::<_, [bool; 0]>(&bits) };
-        // Ok(Self::from_bits(&bits))
+        let zia_choice = if s == "1" {
+            return Ok(Self::VCC);
+        } else if s == "0" {
+            return Ok(Self::GND);
+        } else if s == "DedicatedInputPin" {
+            ZIATableEntry::DedicatedInputPin
+        } else if let Some(s) = s.strip_prefix("Invalid(") {
+            let mut bits = [false; 88];
+            let mut chars = s.chars();
+            for i in 0..device.zia_width() {
+                let c = chars.next().ok_or(())?;
+                if c == '1' {
+                    bits[i] = true;
+                } else if c == '0' {
+                    bits[i] = false;
+                } else {
+                    return Err(());
+                }
+            }
+            if chars.next().ok_or(())? != ')' {
+                return Err(());
+            }
+            if chars.next().is_some() {
+                return Err(());
+            }
+            return Ok(Self::Invalid(bits));
+        } else if let Some(s) = s.strip_prefix("Macrocell(") {
+            if let Some(s) = s.strip_suffix(")") {
+                if let Some((fb, mc)) = s.split_once(',') {
+                    let fb = fb.trim();
+                    let mc = mc.trim();
+
+                    let fb = if let Some(fb) = fb.strip_prefix("FB") {
+                        fb.parse::<u8>().map_err(|_| ())?
+                    } else {
+                        return Err(());
+                    };
+                    let mc = if let Some(mc) = mc.strip_prefix("MC") {
+                        mc.parse::<u8>().map_err(|_| ())?
+                    } else {
+                        return Err(());
+                    };
+
+                    ZIATableEntry::Macrocell { fb, mc }
+                } else {
+                    return Err(());
+                }
+            } else {
+                return Err(());
+            }
+        } else if let Some(s) = s.strip_prefix("InputPin(") {
+            if let Some(s) = s.strip_suffix(")") {
+                if let Some((fb, mc)) = s.split_once(',') {
+                    let fb = fb.trim();
+                    let mc = mc.trim();
+
+                    let fb = if let Some(fb) = fb.strip_prefix("FB") {
+                        fb.parse::<u8>().map_err(|_| ())?
+                    } else {
+                        return Err(());
+                    };
+                    let mc = if let Some(mc) = mc.strip_prefix("MC") {
+                        mc.parse::<u8>().map_err(|_| ())?
+                    } else {
+                        return Err(());
+                    };
+
+                    ZIATableEntry::InputPin { fb, mc }
+                } else {
+                    return Err(());
+                }
+            } else {
+                return Err(());
+            }
+        } else {
+            return Err(());
+        };
+
+        let zia_row = device.zia_table_get_row(accessor.zia_row);
+
+        for zia_choice_i in 0..device.num_zia_choices() {
+            if zia_row[zia_choice_i] == zia_choice {
+                return Ok(Self::MuxChoice(zia_choice_i as u8));
+            }
+        }
+
+        Err(())
     }
 }
 
