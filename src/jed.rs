@@ -11,7 +11,7 @@ use jedec::*;
 
 use crate::{
     bitstream::{BitHolder, Coolrunner2},
-    fb::and_get_bit_pos,
+    fb::{and_get_bit_pos, or_get_bit_pos},
     global_fuses::*,
     partdb::{XC2Device, XC2Part},
     ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS,
@@ -162,11 +162,6 @@ const BIG_MC_NO_IO_PERMUTE: [Coordinate; 16] = [
 const BIG_MC_STARTING_ROW: [usize; MCS_PER_FB] =
     [0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30, 33, 35, 38];
 
-const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
-    17, 19, 22, 20, 0, 1, 3, 4, 5, 7, 8, 11, 12, 13, 15, 16, 23, 24, 26, 27, 28, 31, 32, 34, 35,
-    36, 38, 39,
-];
-
 fn get_fat_mc_idx(device: XC2Device, fb: usize, offs: usize) -> (usize, usize) {
     let mut accum_offs = 0;
     for mc in 0..16 {
@@ -285,52 +280,9 @@ impl JedecCompat for XC2Device {
                 }
             }
         } else if let Some((fb, offs)) = self._is_or(jed_idx) {
-            match self {
-                XC2Device::XC2C32
-                | XC2Device::XC2C32A
-                | XC2Device::XC2C64
-                | XC2Device::XC2C64A
-                | XC2Device::XC2C256 => {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let x_base = offs_16 % 2 + group_16 * 2;
-                    let y_base = 20 + offs_16 / 2;
-
-                    let mc_offset = if *self == XC2Device::XC2C256 { 10 } else { 9 };
-
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8)
-                            + Coordinate::new(mc_offset, 0)
-                            + Coordinate::new(x_base, y_base)
-                    } else {
-                        self.fb_corner(fb as u8).sub_x_add_y(
-                            Coordinate::new(mc_offset, 0) + Coordinate::new(x_base, y_base),
-                        )
-                    }
-                }
-                XC2Device::XC2C128 | XC2Device::XC2C384 | XC2Device::XC2C512 => {
-                    let group_16 = offs / 16;
-                    let offs_16 = offs % 16;
-
-                    let y_base = SIDE_OR_ROW_PERMUTE[group_16 / 2];
-                    let x_base = offs_16 * 2
-                        + if y_base >= 23 {
-                            1 - group_16 % 2
-                        } else {
-                            group_16 % 2
-                        };
-
-                    if fb % 2 == 0 {
-                        self.fb_corner(fb as u8)
-                            + Coordinate::new(15, 0)
-                            + Coordinate::new(x_base, y_base)
-                    } else {
-                        self.fb_corner(fb as u8)
-                            .sub_x_add_y(Coordinate::new(15, 0) + Coordinate::new(x_base, y_base))
-                    }
-                }
-            }
+            let pterm_i = offs / 16;
+            let mc = offs % 16;
+            or_get_bit_pos(*self, fb as u8, mc as u8, pterm_i as u8)
         } else if let Some((fb, offs)) = self._is_and(jed_idx) {
             let pterm_i = offs / 80;
             let offs_80 = offs % 80;
