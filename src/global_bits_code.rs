@@ -143,4 +143,4 @@ pub struct UseVref {
     #[bittwiddler::skip]
     pub(crate) device: XC2Device,
 }
-crate::bitstream::single_bool_impl!(UseVref, self, { (self.device.data_gate(), true) });
+crate::bitstream::single_bool_impl!(UseVref, self, { (self.device.vref_enable(), true) });

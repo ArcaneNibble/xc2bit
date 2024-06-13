@@ -23,6 +23,7 @@ pub const NUM_BUFG_GSR: usize = 1;
 pub mod bitstream;
 #[cfg(feature = "std")]
 pub mod crbit;
+pub mod extra_bits;
 pub mod fb;
 pub mod global_bits_code;
 pub mod global_fuses;

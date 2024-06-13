@@ -1,0 +1,4 @@
+ReadbackSecurity
+1111111     *Unsecured
+0101010     Secured
+catchall    Invalid
