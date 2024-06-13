@@ -245,6 +245,14 @@ impl XC2Device {
             false
         }
     }
+
+    pub const fn num_io_banks(self) -> usize {
+        match self {
+            XC2Device::XC2C32 | XC2Device::XC2C64 => 1,
+            XC2Device::XC2C32A | XC2Device::XC2C64A | XC2Device::XC2C128 | XC2Device::XC2C256 => 2,
+            XC2Device::XC2C384 | XC2Device::XC2C512 => 4,
+        }
+    }
 }
 
 /// All possible speed grades

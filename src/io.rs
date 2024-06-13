@@ -3,7 +3,10 @@
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
 
-use crate::global_fuses::{XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, XC2C32_EXTRA_IBUF_TERMINATION};
+use crate::global_fuses::{
+    GlobalFuses, XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, XC2C32_EXTRA_IBUF_TERMINATION, XC2C32_IVOLTAGE,
+    XC2C32_OVOLTAGE, XC2C64_IVOLTAGE, XC2C64_OVOLTAGE,
+};
 use crate::mc;
 use crate::{
     fb::FunctionBlock,
@@ -289,4 +292,87 @@ crate::bitstream::single_bool_impl!(ExtraSchmittTriggerAccessor, self, {
 pub struct ExtraTerminationAccessor {}
 crate::bitstream::single_bool_impl!(ExtraTerminationAccessor, self, {
     (XC2C32_EXTRA_IBUF_TERMINATION, false)
+});
+
+include!(concat!(env!("OUT_DIR"), "/io-voltage.rs"));
+
+macro_rules! iovoltage_impl {
+    ($name:ident, $self:ident, $get:block) => {
+        iovoltage_impl!($name, $self, $get, nodefault);
+        impl PropertyAccessorWithDefault for $name {}
+    };
+    ($name:ident, $self:ident, $get:block, nodefault) => {
+        impl PropertyAccessor for $name {
+            type BoolArray = [bool; 1];
+            type Output = IoVoltage;
+
+            fn get_bit_pos(&$self, _biti: usize) -> (Coordinate, bool) {
+                $get
+            }
+        }
+        #[cfg(feature = "alloc")]
+        impl PropertyAccessorWithStringConv for $name {}
+    };
+}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct LegacyIVoltage {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+iovoltage_impl!(LegacyIVoltage, self, {
+    (
+        match self.device {
+            XC2Device::XC2C32A => XC2C32_IVOLTAGE,
+            XC2Device::XC2C64A => XC2C64_IVOLTAGE,
+            _ => unreachable!(),
+        },
+        true,
+    )
+});
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct LegacyOVoltage {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+iovoltage_impl!(LegacyOVoltage, self, {
+    (
+        match self.device {
+            XC2Device::XC2C32A => XC2C32_OVOLTAGE,
+            XC2Device::XC2C64A => XC2C64_OVOLTAGE,
+            _ => unreachable!(),
+        },
+        true,
+    )
+});
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct IVoltage {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+    pub(crate) io_bank: u8,
+}
+iovoltage_impl!(IVoltage, self, {
+    (
+        self.device.io_input_voltage()[self.io_bank as usize],
+        self.device != XC2Device::XC2C512,
+    )
+});
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct OVoltage {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+    pub(crate) io_bank: u8,
+}
+iovoltage_impl!(OVoltage, self, {
+    (
+        self.device.io_output_voltage()[self.io_bank as usize],
+        self.device != XC2Device::XC2C512,
+    )
 });

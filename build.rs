@@ -37,6 +37,7 @@ fn main() {
 
     generate_one_enum("global-term");
     generate_one_enum("clk-div");
+    generate_one_enum("io-voltage");
 
     {
         let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

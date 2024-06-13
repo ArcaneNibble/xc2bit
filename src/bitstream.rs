@@ -12,7 +12,7 @@ use crate::{
         ClockDivider, DataGate, GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor, UseVref,
     },
     global_fuses::GlobalFuses,
-    io::ExtraDedicatedInput,
+    io::{ExtraDedicatedInput, IVoltage, LegacyIVoltage, LegacyOVoltage, OVoltage},
     partdb::{XC2Device, XC2Part},
 };
 
@@ -189,6 +189,38 @@ impl<B: BitHolder> Coolrunner2<B> {
             device: self.part.device,
         }
     }
+
+    #[bittwiddler::property]
+    #[bittwiddler::conditional]
+    pub fn legacy_ivoltage(&self) -> LegacyIVoltage {
+        LegacyIVoltage {
+            device: self.part.device,
+        }
+    }
+    #[bittwiddler::property]
+    #[bittwiddler::conditional]
+    pub fn legacy_ovoltage(&self) -> LegacyOVoltage {
+        LegacyOVoltage {
+            device: self.part.device,
+        }
+    }
+
+    #[bittwiddler::property]
+    pub fn input_voltage(&self, io_bank: u8) -> IVoltage {
+        assert!((io_bank as usize) < self.part.device.num_io_banks());
+        IVoltage {
+            device: self.part.device,
+            io_bank,
+        }
+    }
+    #[bittwiddler::property]
+    pub fn output_voltage(&self, io_bank: u8) -> OVoltage {
+        assert!((io_bank as usize) < self.part.device.num_io_banks());
+        OVoltage {
+            device: self.part.device,
+            io_bank,
+        }
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -233,6 +265,26 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
             x.next();
         }
         x
+    }
+    fn _automagic_construct_all_legacy_ivoltage(&self) -> impl Iterator<Item = LegacyIVoltage> {
+        let mut x = [self.legacy_ivoltage()].into_iter();
+        if self.part.device != XC2Device::XC2C32A && self.part.device != XC2Device::XC2C64A {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_legacy_ovoltage(&self) -> impl Iterator<Item = LegacyOVoltage> {
+        let mut x = [self.legacy_ovoltage()].into_iter();
+        if self.part.device != XC2Device::XC2C32A && self.part.device != XC2Device::XC2C64A {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_input_voltage(&self) -> impl Iterator<Item = IVoltage> {
+        (0..self.part.device.num_io_banks()).map(|io_bank| self.input_voltage(io_bank as u8))
+    }
+    fn _automagic_construct_all_output_voltage(&self) -> impl Iterator<Item = OVoltage> {
+        (0..self.part.device.num_io_banks()).map(|io_bank| self.output_voltage(io_bank as u8))
     }
 }
 
