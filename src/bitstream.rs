@@ -10,7 +10,8 @@ use crate::{
     fb::FunctionBlock,
     global_bits_code::{GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor},
     global_fuses::GlobalFuses,
-    partdb::XC2Part,
+    io::ExtraDedicatedInput,
+    partdb::{XC2Device, XC2Part},
 };
 
 pub(crate) trait BitHolder {
@@ -158,6 +159,11 @@ impl<B: BitHolder> Coolrunner2<B> {
             device: self.part.device,
         }
     }
+
+    #[bittwiddler::conditional]
+    pub fn extra_dedicated_input(&self) -> ExtraDedicatedInput {
+        ExtraDedicatedInput {}
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -170,9 +176,17 @@ impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
     fn _automagic_construct_all_gts_invert(&self) -> impl Iterator<Item = GTSInv> {
         (0..4).map(|gts_idx| self.gts_invert(gts_idx))
     }
-
     fn _automagic_construct_all_fb(&self) -> impl Iterator<Item = FunctionBlock> {
         (0..self.part.device.num_fbs()).map(|fb| self.fb(fb as u8))
+    }
+    fn _automagic_construct_all_extra_dedicated_input(
+        &self,
+    ) -> impl Iterator<Item = ExtraDedicatedInput> {
+        let mut x = [self.extra_dedicated_input()].into_iter();
+        if self.part.device != XC2Device::XC2C32 && self.part.device != XC2Device::XC2C32A {
+            x.next();
+        }
+        x
     }
 }
 

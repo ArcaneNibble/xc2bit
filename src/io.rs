@@ -3,6 +3,7 @@
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
 
+use crate::global_fuses::{XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, XC2C32_EXTRA_IBUF_TERMINATION};
 use crate::mc;
 use crate::{
     fb::FunctionBlock,
@@ -270,3 +271,46 @@ impl PropertyAccessorWithDefault for InputModeAccessor {
         }
     }
 }
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ExtraDedicatedInput {}
+#[bittwiddler_properties(alloc_feature_gate = "alloc")]
+impl ExtraDedicatedInput {
+    #[bittwiddler::property]
+    pub fn schmitt_trigger(&self) -> ExtraSchmittTriggerAccessor {
+        ExtraSchmittTriggerAccessor {}
+    }
+    #[bittwiddler::property]
+    pub fn termination_enabled(&self) -> ExtraTerminationAccessor {
+        ExtraTerminationAccessor {}
+    }
+}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct ExtraSchmittTriggerAccessor {}
+impl PropertyAccessor for ExtraSchmittTriggerAccessor {
+    type BoolArray = [bool; 1];
+    type Output = bool;
+
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (XC2C32_EXTRA_IBUF_SCHMITT_TRIGGER, false)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for ExtraSchmittTriggerAccessor {}
+impl PropertyAccessorWithDefault for ExtraSchmittTriggerAccessor {}
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+pub struct ExtraTerminationAccessor {}
+impl PropertyAccessor for ExtraTerminationAccessor {
+    type BoolArray = [bool; 1];
+    type Output = bool;
+
+    fn get_bit_pos(&self, _biti: usize) -> (Coordinate, bool) {
+        (XC2C32_EXTRA_IBUF_TERMINATION, false)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for ExtraTerminationAccessor {}
+impl PropertyAccessorWithDefault for ExtraTerminationAccessor {}
