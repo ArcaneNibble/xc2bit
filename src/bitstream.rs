@@ -6,7 +6,12 @@ use bittwiddler_core::prelude::{HumanLevelThatHasState, HumanSinkForStatePieces}
 use bittwiddler_macros::bittwiddler_properties;
 use bitvec::prelude::*;
 
-use crate::{fb::FunctionBlock, global_bits_code::GCK, global_fuses::GlobalFuses, partdb::XC2Part};
+use crate::{
+    fb::FunctionBlock,
+    global_bits_code::{GCKEn, GSREn, GSRInv, GTSEn, GTSInv, GlobalTermAccessor},
+    global_fuses::GlobalFuses,
+    partdb::XC2Part,
+};
 
 pub(crate) trait BitHolder {
     fn get(&self, idx: usize) -> bool;
@@ -109,18 +114,61 @@ impl<B: BitHolder> Coolrunner2<B> {
     }
 
     #[bittwiddler::property]
-    pub fn gck_enabled(&self, gck_idx: u8) -> GCK {
+    pub fn gck_enabled(&self, gck_idx: u8) -> GCKEn {
         assert!(gck_idx < 3);
-        GCK {
+        GCKEn {
             device: self.part.device,
             gck_idx,
+        }
+    }
+
+    #[bittwiddler::property]
+    pub fn gsr_enabled(&self) -> GSREn {
+        GSREn {
+            device: self.part.device,
+        }
+    }
+    #[bittwiddler::property]
+    pub fn gsr_invert(&self) -> GSRInv {
+        GSRInv {
+            device: self.part.device,
+        }
+    }
+
+    #[bittwiddler::property]
+    pub fn gts_enabled(&self, gts_idx: u8) -> GTSEn {
+        assert!(gts_idx < 4);
+        GTSEn {
+            device: self.part.device,
+            gts_idx,
+        }
+    }
+    #[bittwiddler::property]
+    pub fn gts_invert(&self, gts_idx: u8) -> GTSInv {
+        assert!(gts_idx < 4);
+        GTSInv {
+            device: self.part.device,
+            gts_idx,
+        }
+    }
+
+    #[bittwiddler::property]
+    pub fn global_termination(&self) -> GlobalTermAccessor {
+        GlobalTermAccessor {
+            device: self.part.device,
         }
     }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
-    fn _automagic_construct_all_gck_enabled(&self) -> impl Iterator<Item = GCK> {
+    fn _automagic_construct_all_gck_enabled(&self) -> impl Iterator<Item = GCKEn> {
         (0..3).map(|gck_idx| self.gck_enabled(gck_idx))
+    }
+    fn _automagic_construct_all_gts_enabled(&self) -> impl Iterator<Item = GTSEn> {
+        (0..4).map(|gts_idx| self.gts_enabled(gts_idx))
+    }
+    fn _automagic_construct_all_gts_invert(&self) -> impl Iterator<Item = GTSInv> {
+        (0..4).map(|gts_idx| self.gts_invert(gts_idx))
     }
 
     fn _automagic_construct_all_fb(&self) -> impl Iterator<Item = FunctionBlock> {

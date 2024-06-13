@@ -1,0 +1,3 @@
+GlobalTermination
+0   Keeper
+1   *PullUp
