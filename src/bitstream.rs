@@ -231,6 +231,13 @@ impl<B: BitHolder> Coolrunner2<B> {
             device: self.part.device,
         }
     }
+
+    #[bittwiddler::property]
+    pub fn security(&self) -> DeviceSecurity {
+        DeviceSecurity {
+            device: self.part.device,
+        }
+    }
 }
 #[cfg(feature = "alloc")]
 impl<B: BitHolder> Coolrunner2AutomagicRequiredFunctions for Coolrunner2<B> {
@@ -327,6 +334,26 @@ impl PropertyAccessorWithDefault for UserCode {
         val == 0xffffffff
     }
 }
+
+include!(concat!(env!("OUT_DIR"), "/security.rs"));
+
+#[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct DeviceSecurity {
+    #[bittwiddler::skip]
+    pub(crate) device: XC2Device,
+}
+impl PropertyAccessor for DeviceSecurity {
+    type BoolArray = [bool; 7];
+    type Output = ReadbackSecurity;
+
+    fn get_bit_pos(&self, biti: usize) -> (Coordinate, bool) {
+        (self.device.done1() - Coordinate::new(8 - biti, 0), false)
+    }
+}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for DeviceSecurity {}
+impl PropertyAccessorWithDefault for DeviceSecurity {}
 
 macro_rules! single_bool_impl {
     ($name:ident, $self:ident, $get:block) => {

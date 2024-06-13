@@ -939,7 +939,7 @@ impl<B: BitHolder> JedWriter for Coolrunner2<B> {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use crate::bitstream::UserCode;
+    use crate::bitstream::{DeviceSecurity, UserCode};
 
     use super::*;
     extern crate std;
@@ -955,6 +955,7 @@ mod tests {
                 .collect::<Vec<_>>();
 
             let usercode_accessor = UserCode { device };
+            let secure_accessor = DeviceSecurity { device };
 
             for (x, xi) in map_bits.iter().enumerate() {
                 for (y, map_bit) in xi.iter().enumerate() {
@@ -987,6 +988,14 @@ mod tests {
                             assert_eq!(c, Coordinate::new(x, y));
                         } else if *map_bit == "spare" {
                             // do nothing
+                        } else if *map_bit == "done<0>" || *map_bit == "done_0" {
+                            println!("checking ({}, {}) = done[0]", x, y);
+                            let c = device.done1() - Coordinate::new(1, 0);
+                            assert_eq!(c, Coordinate::new(x, y));
+                        } else if *map_bit == "done<1>" || *map_bit == "done_1" {
+                            println!("checking ({}, {}) = done[1]", x, y);
+                            let c = device.done1();
+                            assert_eq!(c, Coordinate::new(x, y));
                         } else if let Some(usercode_bit) = map_bit.strip_prefix("user_") {
                             let usercode_bit = usercode_bit.parse::<usize>().unwrap();
                             println!("checking ({}, {}) = usercode[{}]", x, y, usercode_bit);
@@ -996,6 +1005,11 @@ mod tests {
                             let usercode_bit = usercode_bit.parse::<usize>().unwrap();
                             println!("checking ({}, {}) = usercode[{}]", x, y, usercode_bit);
                             let c = usercode_accessor.get_bit_pos(usercode_bit).0;
+                            assert_eq!(c, Coordinate::new(x, y));
+                        } else if let Some(secure_bit) = map_bit.strip_prefix("sec_") {
+                            let secure_bit: usize = secure_bit.parse::<usize>().unwrap();
+                            println!("checking ({}, {}) = sec[{}]", x, y, secure_bit);
+                            let c = secure_accessor.get_bit_pos(secure_bit).0;
                             assert_eq!(c, Coordinate::new(x, y));
                         } else {
                             println!("TODO: {}", map_bit);
