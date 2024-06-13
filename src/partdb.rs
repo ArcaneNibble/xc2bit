@@ -211,6 +211,16 @@ impl XC2Device {
             }
         }
     }
+
+    pub const fn has_large_macrocells(self) -> bool {
+        if let XC2Device::XC2C128 | XC2Device::XC2C256 | XC2Device::XC2C384 | XC2Device::XC2C512 =
+            self
+        {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 /// All possible speed grades

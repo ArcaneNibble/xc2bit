@@ -29,10 +29,12 @@ impl IoPad {
         IoFeedbackSourceAccessor { x: *self }
     }
     #[bittwiddler::property]
+    #[bittwiddler::conditional]
     pub fn schmitt_trigger(&self) -> SchmittTriggerAccessor {
         SchmittTriggerAccessor { x: *self }
     }
     #[bittwiddler::property]
+    #[bittwiddler::conditional]
     pub fn input_pad_mode(&self) -> InputModeAccessor {
         InputModeAccessor { x: *self }
     }
@@ -53,8 +55,34 @@ impl IoPad {
         SlewAccessor { x: *self }
     }
     #[bittwiddler::property]
+    #[bittwiddler::conditional]
     pub fn use_data_gate(&self) -> DataGateAccessor {
         DataGateAccessor { x: *self }
+    }
+}
+impl IoPadAutomagicRequiredFunctions for IoPad {
+    fn _automagic_construct_all_schmitt_trigger(
+        &self,
+    ) -> impl Iterator<Item = SchmittTriggerAccessor> {
+        let mut x = [self.schmitt_trigger()].into_iter();
+        if self.x.device.has_large_macrocells() {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_input_pad_mode(&self) -> impl Iterator<Item = InputModeAccessor> {
+        let mut x = [self.input_pad_mode()].into_iter();
+        if !self.x.device.has_large_macrocells() {
+            x.next();
+        }
+        x
+    }
+    fn _automagic_construct_all_use_data_gate(&self) -> impl Iterator<Item = DataGateAccessor> {
+        let mut x = [self.use_data_gate()].into_iter();
+        if !self.x.device.has_large_macrocells() {
+            x.next();
+        }
+        x
     }
 }
 
