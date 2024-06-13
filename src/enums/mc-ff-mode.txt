@@ -1,0 +1,6 @@
+/// Mode of the register in a macrocell.
+FlipFlopMode
+00      *DFF        D-type flip-flop
+01      LATCH       Transparent latch
+10      TFF         Toggle flip-flop
+11      DFFCE       D-type flip-flop with clock-enable pin

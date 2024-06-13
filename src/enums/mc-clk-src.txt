@@ -1,0 +1,7 @@
+/// Clock source for the register in a macrocell
+RegClkSrc
+x00     *GCK0
+x10     GCK1
+x01     GCK2
+011     PTC
+111     CTC

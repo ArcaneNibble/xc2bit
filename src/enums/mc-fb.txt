@@ -1,0 +1,7 @@
+/// Mux selection for the ZIA input from this macrocell.
+/// The ZIA input can be chosen to come from either the XOR gate
+/// or from the output of the register.
+MacrocellFeedbackSrc
+X1      *Disabled
+00      XorGate
+10      FlipFlop

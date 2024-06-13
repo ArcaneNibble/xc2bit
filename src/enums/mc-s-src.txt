@@ -1,0 +1,6 @@
+/// Set source for the register in a macrocell
+RegSetSrc
+11      *Disabled
+00      PTA
+01      GSR
+10      CTS

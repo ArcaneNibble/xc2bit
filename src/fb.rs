@@ -1,9 +1,9 @@
-//! Function block
+//! Function block (and PLA)
 
 use bittwiddler_core::prelude::*;
 use bittwiddler_macros::*;
 
-use crate::{partdb::XC2Device, ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS};
+use crate::{mc::Macrocell, partdb::XC2Device, ANDTERMS_PER_FB, MCS_PER_FB, ZIA_ROWS};
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -22,6 +22,10 @@ impl FunctionBlock {
         assert!((mc as usize) < MCS_PER_FB);
         OrTerm { x: *self, mc }
     }
+    pub fn mc(&self, mc: u8) -> Macrocell {
+        assert!((mc as usize) < MCS_PER_FB);
+        Macrocell { x: *self, mc }
+    }
 }
 #[cfg(feature = "alloc")]
 impl FunctionBlockAutomagicRequiredFunctions for FunctionBlock {
@@ -30,6 +34,9 @@ impl FunctionBlockAutomagicRequiredFunctions for FunctionBlock {
     }
     fn _automagic_construct_all_or_term(&self) -> impl Iterator<Item = OrTerm> {
         (0..MCS_PER_FB).map(|mc| self.or_term(mc as u8))
+    }
+    fn _automagic_construct_all_mc(&self) -> impl Iterator<Item = Macrocell> {
+        (0..MCS_PER_FB).map(|mc| self.mc(mc as u8))
     }
 }
 
@@ -86,6 +93,9 @@ impl PropertyAccessor for TrueInput {
         )
     }
 }
+impl PropertyAccessorWithDefault for TrueInput {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for TrueInput {}
 
 #[bittwiddler_hierarchy_level(alloc_feature_gate = "alloc")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -110,6 +120,9 @@ impl PropertyAccessor for CompInput {
         )
     }
 }
+impl PropertyAccessorWithDefault for CompInput {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for CompInput {}
 
 #[rustfmt::skip]
 const NOGAP_AND_TERM_PERMUTE: [usize; ANDTERMS_PER_FB] = [
@@ -213,6 +226,9 @@ impl PropertyAccessor for OrInput {
         )
     }
 }
+impl PropertyAccessorWithDefault for OrInput {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for OrInput {}
 
 const SIDE_OR_ROW_PERMUTE: [usize; 28] = [
     17, 19, 22, 20, 0, 1, 3, 4, 5, 7, 8, 11, 12, 13, 15, 16, 23, 24, 26, 27, 28, 31, 32, 34, 35,

@@ -19,3 +19,6 @@ impl PropertyAccessor for GCK {
         (self.device.gck()[self.gck_idx as usize], false)
     }
 }
+impl PropertyAccessorWithDefault for GCK {}
+#[cfg(feature = "alloc")]
+impl PropertyAccessorWithStringConv for GCK {}

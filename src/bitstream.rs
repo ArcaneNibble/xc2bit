@@ -1,9 +1,8 @@
 //! Top-level bitstream functions
 
-use bittwiddler_core::prelude::{
-    BitArray as BittwiddlerBitArray, Coordinate, HumanLevelThatHasState, HumanSinkForStatePieces,
-    PropertyAccessor,
-};
+use bittwiddler_core::prelude::{BitArray as BittwiddlerBitArray, Coordinate, PropertyAccessor};
+#[cfg(feature = "alloc")]
+use bittwiddler_core::prelude::{HumanLevelThatHasState, HumanSinkForStatePieces};
 use bittwiddler_macros::bittwiddler_properties;
 use bitvec::prelude::*;
 
