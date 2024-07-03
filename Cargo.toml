@@ -21,12 +21,12 @@ alloc = [
 serde = ["dep:serde", "serde/derive"]
 
 [dependencies]
-bittwiddler-core = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-core", default-features = false }
-bittwiddler-macros = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-macros" }
-bittwiddler-textfile = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-textfile", optional = true }
+bittwiddler-core = { path = "../bitstream-spreadsheet-dsl/bittwiddler-core", default-features = false }
+bittwiddler-macros = { path = "../bitstream-spreadsheet-dsl/bittwiddler-macros" }
+bittwiddler-textfile = { path = "../bitstream-spreadsheet-dsl/bittwiddler-textfile", optional = true }
 bitvec = { version = "1.0", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
 jedec = { path = "../rust-jedec", default-features = false }
 
 [build-dependencies]
-bittwiddler-dsl = { path = "../programmable-logic-bit-tools-yet-again-with-gay-this-time/bittwiddler-dsl" }
+bittwiddler-dsl = { path = "../bitstream-spreadsheet-dsl/bittwiddler-dsl" }
